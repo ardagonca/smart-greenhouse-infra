@@ -13,7 +13,6 @@ function App() {
   const [sensorData, setSensorData] = useState(null);
   const [aiRisk, setAiRisk] = useState(null);
   const [offline, setOffline] = useState(false);
-  const [trainingUpdate, setTrainingUpdate] = useState(null);
 
   useEffect(() => {
     let ws = null;
@@ -29,8 +28,6 @@ function App() {
             setSensorData(payload.data);
           } else if (payload.type === 'ai_prediction') {
             setAiRisk(payload);
-          } else if (payload.type === 'training_update') {
-            setTrainingUpdate(payload);
           }
         } catch(e) {
           console.error(e);
@@ -117,7 +114,7 @@ function App() {
         <Overview sensorData={sensorData} aiRisk={aiRisk} />
       </div>
       {activeTab === 'Weather' && <WeatherMap sensorData={sensorData} />}
-      {activeTab === 'Analytics' && <Analytics trainingUpdate={trainingUpdate} />}
+      {activeTab === 'Analytics' && <Analytics />}
       <div style={{ display: activeTab === 'Monitoring' ? 'contents' : 'none' }}>
         <Monitoring />
       </div>

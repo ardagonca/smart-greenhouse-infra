@@ -30,7 +30,7 @@ async def backfill():
             rh = pdata.rh_from((r.temp_avg_f - 32) * 5 / 9, r.vpd_avg_kpa)
             rows.append((r.t.to_pydatetime(), "GH_VERDIFY", float(r.temp_avg_f), rh, float(r.vpd_avg_kpa)))
         if rows:
-            await conn.executemany("INSERT INTO sensor_metrics (time, sensor_id, temperature, humidity, vpd) VALUES ($1,$2,$3,$4,$5)", rows)
+            await conn.executemany("INSERT INTO sensor_metrics (time, sensor_id, temperature, humidity, vpd) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (sensor_id, time) DO NOTHING", rows)
     print(f"Backfill sensor_metrics: {len(rows)} saat eklendi (son kayıt: {last_in})")
 
 

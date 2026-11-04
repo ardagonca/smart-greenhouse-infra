@@ -1,3 +1,4 @@
+import asyncio
 import asyncpg
 import os
 import datetime
@@ -10,9 +11,17 @@ pool = None
 
 async def init_db():
     global pool
-    print(f"Connecting to database at {DB_URL}")
-    pool = await asyncpg.create_pool(DB_URL)
-    
+    print("Connecting to database...")  # URL şifre içerir, log'a yazma
+    for attempt in range(1, 6):  # Supabase geçici zaman aşımı verirse API ölmesin
+        try:
+            pool = await asyncpg.create_pool(DB_URL, timeout=20)
+            break
+        except Exception as e:
+            print(f"DB bağlantısı başarısız ({attempt}/5): {type(e).__name__}")
+            if attempt == 5:
+                raise
+            await asyncio.sleep(5)
+
     async with pool.acquire() as conn:
         # Create table with Roadmap Phase 3.2 Schema + AI results
         await conn.execute('''
@@ -29,6 +38,22 @@ async def init_db():
                 is_high_risk BOOLEAN
             );
         ''')
+        # Aynı (sensor, saat) iki yazıcıdan kopya girmişti: en son eklenen kalır, sonra benzersizlik kuralı konur
+        await conn.execute('''
+            DELETE FROM sensor_metrics a USING sensor_metrics b
+            WHERE a.sensor_id = b.sensor_id AND a.time = b.time AND a.ctid < b.ctid;
+        ''')
+        await conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS sensor_metrics_sensor_time_uq ON sensor_metrics (sensor_id, time);')
+        # Tek kullanıcılı profil (giriş sistemi yok): id=1 satırı hep var
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS user_profile (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                name VARCHAR(50) NOT NULL,
+                email VARCHAR(120),
+                role VARCHAR(30) NOT NULL DEFAULT 'Admin'
+            );
+        ''')
+        await conn.execute("INSERT INTO user_profile (id, name) VALUES (1, 'Arda') ON CONFLICT (id) DO NOTHING")
         print("Table sensor_metrics initialized.")
 
 async def close_db():
@@ -52,15 +77,13 @@ async def insert_metrics(data_dict: dict, ai_risk_score: float = None, is_high_r
             await conn.execute('''
                 INSERT INTO sensor_metrics (time, sensor_id, temperature, humidity, co2_ppm, vpd, dew_point, leaf_wetness, ai_risk_score, is_high_risk)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            ''', 
+            ON CONFLICT (sensor_id, time) DO NOTHING
+            ''',
             time_val,
             data_dict.get('sensor_id', 'UNKNOWN'),
-            float(data_dict.get('temperature', 0)),
-            float(data_dict.get('humidity', 0)),
-            int(data_dict.get('co2_ppm', 0)),
-            float(data_dict.get('vpd', 0)),
-            float(data_dict.get('dew_point', 0)),
-            float(data_dict.get('leaf_wetness', 0)),
+            *(None if data_dict.get(k) is None else f(data_dict[k])  # eksik ölçüm NULL kalır, 0 yazılmaz
+              for k, f in (('temperature', float), ('humidity', float), ('co2_ppm', int), ('vpd', float),
+                           ('dew_point', float), ('leaf_wetness', float))),
             ai_risk_score, 
             is_high_risk)
     except Exception as e:
@@ -205,3 +228,16 @@ async def get_daily_trends(date_str: str):
         }
         for r in records
     ]
+
+
+async def get_profile():
+    if pool is None:
+        return None
+    async with pool.acquire() as conn:
+        r = await conn.fetchrow("SELECT name, email, role FROM user_profile WHERE id = 1")
+    return dict(r) if r else None
+
+async def update_profile(name: str, email):
+    async with pool.acquire() as conn:
+        r = await conn.fetchrow("UPDATE user_profile SET name = $1, email = $2 WHERE id = 1 RETURNING name, email, role", name, email)
+    return dict(r)

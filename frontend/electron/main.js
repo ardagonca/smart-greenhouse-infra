@@ -17,10 +17,10 @@ app.commandLine.appendSwitch('enable-gpu-rasterization');
 
 let mainWindow;
 
-// Uygulama açılınca backend konteynerlerini başlatır (zaten çalışıyorsa zararsız). Docker kapalıysa Docker Desktop'ı açıp ~2 dk dener.
+// Uygulama açılınca backend konteynerini başlatır (zaten çalışıyorsa zararsız). Docker kapalıysa Docker Desktop'ı açıp ~2 dk dener.
 const DOCKER_DESKTOP = 'C:/Program Files/Docker/Docker/Docker Desktop.exe';
 function startBackend(tries = 0) {
-  execFile('docker', ['start', 'greenhouse_api', 'greenhouse_verdify_sync'], (err) => {
+  execFile('docker', ['start', 'greenhouse_api'], (err) => {
     if (!err) return;
     if (tries >= 12) return console.warn('Backend konteynerleri başlatılamadı:', err.message);
     if (tries === 0 && fs.existsSync(DOCKER_DESKTOP)) spawn(DOCKER_DESKTOP, [], { detached: true, stdio: 'ignore' }).unref();

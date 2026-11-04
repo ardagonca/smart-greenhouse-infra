@@ -3,8 +3,7 @@ import requests
 import numpy as np
 from PIL import Image
 import io
-import base64
-import os
+import re
 
 # In-memory cache for Verdify API
 _cache = {
@@ -58,7 +57,7 @@ def get_verdify_vision_data():
                 elif "bloom" in lower_notes or "flower" in lower_notes:
                     status = "flowering"
                     badge = "Flowering Active"
-                elif "ir" in lower_notes:
+                elif re.search(r"\bir\b", lower_notes):  # tam kelime: "air", "their" eşleşmesin
                     status = "night_ir"
                     badge = "Night IR Vision"
                 else:
@@ -81,7 +80,7 @@ def get_verdify_vision_data():
     result = {
         "crop": crop_info,
         "latest_health_score": latest_score,
-        "vision_model": "Gemini-Vision 1.5 + Spectral ExG",
+        "vision_model": "Verdify (Gemini) gözlemleri · yükleme: renk tabanlı ExG kuralı",
         "total_observations": len(events),
         "events": events[:25] # Return top 25 recent events
     }

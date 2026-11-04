@@ -1,34 +1,9 @@
 import time
-import requests
 
 _scada_cache = {
     "data": None,
     "last_fetched": 0
 }
-
-def query_verdify(sql):
-    payload = {
-        'queries': [
-            {
-                'datasource': {'uid': 'verdify-tsdb', 'type': 'grafana-postgresql-datasource'},
-                'rawSql': sql,
-                'format': 'table',
-                'refId': 'A'
-            }
-        ]
-    }
-    try:
-        r = requests.post('https://graphs.verdify.ai/api/ds/query', json=payload, headers={'User-Agent': 'Mozilla/5.0'}, timeout=7)
-        if r.status_code == 200:
-            frames = r.json().get('results', {}).get('A', {}).get('frames', [])
-            if frames:
-                f = frames[0]
-                cols = [field['name'] for field in f.get('schema', {}).get('fields', [])]
-                vals = f.get('data', {}).get('values', [])
-                return cols, vals
-    except Exception as e:
-        print(f"Verdify SCADA query error: {e}")
-    return None, None
 
 def get_scada_telemetry():
     """SCADA verisi: public dashboard (canlı bölge iklimi) + saatlik arşiv CSV (ekipman). Olmayan veri None kalır."""

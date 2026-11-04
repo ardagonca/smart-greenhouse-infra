@@ -10,12 +10,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: greenhouse_api
-    command: sh -c "pip install -q --no-cache-dir Pillow python-multipart && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - DB_URL=${SUPABASE_DB_URL}
       - SUPABASE_DB_URL=${SUPABASE_DB_URL}
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"  # sadece bu bilgisayar; ağdaki başkaları erişemesin
     volumes:
       - ./backend:/app
     networks:
@@ -30,24 +30,6 @@ services:
   # 5. React Frontend Paneli - LOKALDE ÇALIŞTIRILIYOR (npm run dev)
   # frontend:
   #   ... (Devre dışı)
-
-  # 6. Verdify Daily Sync (Günlük Veri Çekme)
-  verdify_sync:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: greenhouse_verdify_sync
-    command: python -u daily_verdify_sync.py
-    environment:
-      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
-    networks:
-      - greenhouse_network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 networks:
   greenhouse_network:

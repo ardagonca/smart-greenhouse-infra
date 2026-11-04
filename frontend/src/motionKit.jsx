@@ -10,9 +10,9 @@ export function CountUp({ value, decimals = 1 }) {
   const num = parseFloat(value);
   useEffect(() => {
     if (!Number.isFinite(num) || !ref.current) return;
-    const c = animate(prev.current, num, { duration: 0.8, ease: 'easeOut', onUpdate: v => { ref.current.textContent = v.toFixed(decimals); } });
+    const c = animate(prev.current, num, { duration: 0.8, ease: 'easeOut', onUpdate: v => { if (ref.current) ref.current.textContent = v.toFixed(decimals); } });
     prev.current = num;
-    return () => c.stop();
+    return () => { c.stop(); if (ref.current) ref.current.textContent = num.toFixed(decimals); };
   }, [num, decimals]);
   return <span ref={ref}>{Number.isFinite(num) ? num.toFixed(decimals) : value}</span>;
 }

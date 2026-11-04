@@ -46,7 +46,7 @@ function Tip({ active, payload, label, unit = '', digits = 1, fmt }) {
         <div key={p.dataKey} className="mc-tip-row">
           <span className="mc-dot" style={{ background: p.color || p.fill }} />
           <span>{p.name}</span>
-          <strong>{Number(p.value).toFixed(digits)}{unit}</strong>
+          <strong>{(Array.isArray(p.value) ? p.value : [p.value]).map(v => Number(v).toFixed(digits)).join('–')}{unit}</strong>
         </div>
       ))}
     </div>

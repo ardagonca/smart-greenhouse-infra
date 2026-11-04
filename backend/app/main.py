@@ -1,10 +1,12 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 import asyncio
 import json
 import os
 import sys
+import time
 from collections import deque
 
 try:
@@ -13,15 +15,13 @@ try:
     sys.path.append(os.path.dirname(__file__))
     from ml.preprocessing import TimeSeriesPreprocessor
     from ml.model import HybridGreenhouseAI
-    from ml.train_runner import run_training_task
     HAS_ML = True
 except ImportError:
     HAS_ML = False
     print("PyTorch or ML modules not installed. Running without ML features.")
-from app.db import init_db, close_db, insert_metrics, get_historical_data, get_latest_outdoor_weather
+from app.db import init_db, close_db, insert_metrics, get_historical_data, get_latest_outdoor_weather, get_profile, update_profile
 from app.vision import get_verdify_vision_data, diagnose_leaf_image
 from app.scada import get_scada_telemetry
-from app import grafana_data as gd
 
 app = FastAPI()
 
@@ -135,7 +135,7 @@ async def broadcast_message(message: dict):
             dead_clients.add(client)
             
     for client in dead_clients:
-        connected_clients.remove(client)
+        connected_clients.discard(client)
 
 # Risk: Grafana saatlik verisiyle 6 saat sonrası VPD tahmini + eşik kuralı (app/ml/forecast.py)
 async def _forecast(end_date=None):
@@ -158,6 +158,49 @@ async def startup_event():
     await init_db()
     from app.backfill import safe_backfill
     asyncio.create_task(safe_backfill())  # eksik saatleri Grafana'dan arka planda tamamla
+
+_last_hit = time.time()
+
+@app.middleware("http")
+async def _touch(request, call_next):
+    global _last_hit
+    _last_hit = time.time()
+    return await call_next(request)
+
+async def _warm_loop():
+    """Cache'i (panel TTL 30 sn, arşiv CSV 10 dk) arka planda sıcak tut; kullanıcı isteği soğuk indirmeyi beklemesin."""
+    from app import public_data as pdata
+    while True:
+        if time.time() - _last_hit > 300:  # arayüz kapalıysa Verdify'ı boşuna yorma
+            await asyncio.sleep(25)
+            continue
+        for fn in (pdata.latest_conditions, pdata.weather_latest, pdata.monitoring_charts, pdata.dew_trend, pdata.kpi_24h,
+               pdata.equipment_hours, pdata.crop_stress):
+            try:
+                await asyncio.to_thread(fn)
+            except Exception as e:
+                print(f"warm {fn.__name__}: {e}")
+        await asyncio.sleep(25)
+
+RETRAIN_DAYS = 7  # tahmin modeli bu kadar günden eskiyse kendiliğinden yeniden eğitilir
+
+async def _retrain_loop():
+    """VPD tahmin modelini (forecast.py) arka planda, yaşına göre kendi kendine yeniler. Hata olursa eski model kalır."""
+    from app.ml import forecast
+    await asyncio.sleep(60)  # açılış yükü bitsin
+    while True:
+        try:
+            if time.time() - os.path.getmtime(forecast.PATH) > RETRAIN_DAYS * 86400:
+                await asyncio.to_thread(forecast.train)
+                forecast._bundle = None  # sonraki tahmin yeni dosyayı yükler
+        except Exception as e:
+            print(f"retrain: {e}")
+        await asyncio.sleep(3600)
+
+@app.on_event("startup")
+async def warm_startup():
+    asyncio.create_task(_warm_loop())
+    asyncio.create_task(_retrain_loop())
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -190,13 +233,13 @@ async def api_sync_refresh():
 @app.get("/api/conditions/date")
 async def api_conditions_by_date(date: str):
     from app.db import get_daily_average
-    data = await asyncio.to_thread(gd.daily_conditions, date) or await get_daily_average(date)
+    data = await get_daily_average(date)
     return {"data": data}
 
 @app.get("/api/trends/date")
 async def api_trends_by_date(date: str):
     from app.db import get_daily_trends
-    data = await asyncio.to_thread(gd.daily_trends, date) or await get_daily_trends(date)
+    data = await get_daily_trends(date)
     return {"data": data}
 
 @app.get("/api/weather/latest")
@@ -226,17 +269,32 @@ async def api_monitoring_kpi():
     from app import public_data as pdata
     return {"data": await asyncio.to_thread(pdata.kpi_24h)}
 
+@app.get("/api/monitoring/equipment")
+async def api_monitoring_equipment():
+    from app import public_data as pdata
+    return {"data": await asyncio.to_thread(pdata.equipment_hours)}
+
+@app.get("/api/crops/stress")
+async def api_crop_stress():
+    from app import public_data as pdata
+    return {"data": await asyncio.to_thread(pdata.crop_stress)}
+
 @app.get("/api/energy/day")
 async def api_energy_day(date: str):
-    return {"data": await asyncio.to_thread(gd.energy_day, date)}
+    # Enerji verisi (Shelly) Verdify'ın herkese açık kaynaklarında yok; sahte sıfır yerine "veri yok" dön
+    return {"data": None}
 
-@app.post("/api/train/start")
-async def api_train_start():
-    if not HAS_ML:
-        return {"status": "error", "message": "ML modules not installed"}
-    # Start the training task in the background
-    asyncio.create_task(run_training_task(broadcast_message))
-    return {"status": "training_started"}
+class ProfileIn(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+    email: str | None = Field(default=None, max_length=120, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+@app.get("/api/profile")
+async def api_get_profile():
+    return {"data": await get_profile()}
+
+@app.put("/api/profile")
+async def api_put_profile(p: ProfileIn):
+    return {"data": await update_profile(p.name.strip(), p.email or None)}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -247,19 +305,22 @@ async def websocket_endpoint(websocket: WebSocket):
             # Keep connection alive
             await websocket.receive_text()
     except WebSocketDisconnect:
-        connected_clients.remove(websocket)
+        connected_clients.discard(websocket)
 
 # --- COMPUTER VISION & CROP DIAGNOSTICS ENDPOINTS ---
+MAX_UPLOAD = 5_000_000
 @app.get("/api/vision/crop-health")
-async def api_vision_crop_health():
+def api_vision_crop_health():  # düz def: bloklayan requests thread havuzunda çalışır, event loop kilitlenmez
     return get_verdify_vision_data()
 
 @app.post("/api/vision/inspect-leaf")
-async def api_vision_inspect_leaf(file: UploadFile = File(...)):
-    contents = await file.read()
+def api_vision_inspect_leaf(file: UploadFile = File(...)):
+    contents = file.file.read(MAX_UPLOAD + 1)
+    if len(contents) > MAX_UPLOAD:
+        return JSONResponse(status_code=413, content={"detail": "Dosya 5 MB'dan büyük"})
     return diagnose_leaf_image(contents)
 
 # --- INDUSTRIAL SCADA & EQUIPMENT TELEMETRY ENDPOINT ---
 @app.get("/api/monitoring/scada")
-async def api_monitoring_scada():
+def api_monitoring_scada():
     return get_scada_telemetry()

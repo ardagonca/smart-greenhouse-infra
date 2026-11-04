@@ -1,7 +1,7 @@
 """Verdify'ın herkese açık kaynakları: Grafana public dashboard panelleri (canlı, ~1 dk) + saatlik arşiv CSV'si.
 
 SQL yok: Grafana'nın anonim /api/ds/query erişimi kapandı (401). Public dashboard yalnızca panellerin hazır sorgularını verir.
-Verdify'da bulunmayan veriler (CO2, basınç, anlık ekipman durumu, dış hava) burada UYDURULMAZ; None döner.
+Verdify'da bulunmayan veriler (CO2, yağış gözlemi, anlık ekipman durumu) burada UYDURULMAZ; None döner.
 Nem ve çiy noktası, sıcaklık ve VPD'den hesaplanır (Tetens/Magnus).
 """
 import io
@@ -14,6 +14,9 @@ import requests
 BASE = "https://graphs.verdify.ai"
 TOKEN = "d095b74762a242eaabc947444f31a4a1"  # "Site: Home" public dashboard
 CLIMATE = "3d0ec49e80af4fa8a555a5bb8b982a3e"  # "Site: Climate": dış sıcaklık/nem/çiy noktası, gözlenmiş güneş ışınımı
+WEATHER = "ff248334e7f24010a0089a1ab76b4573"  # "Greenhouse: Weather": rüzgâr, basınç, bulutluluk (gözlem + tahmin)
+EQUIPMENT = "801ea06dc3db4c87912eb6188c8fd81b"  # "Greenhouse — Equipment": 24 sa çalışma süresi
+CROPS = "7888b18824aa4c1791659f869d0635d7"  # "Greenhouse — Crops": stres saatleri
 LAB = "https://lab.verdify.ai"
 H = {"User-Agent": "Mozilla/5.0"}
 TZ = "America/Denver"
@@ -104,8 +107,7 @@ def zones_now():
     out["center"].update({"temp_c": ht, "vpd": hv, "rh": rh_from(ht, hv)})
     band = t.get("A", {})
     out["house_target_c"] = _f_to_c(_last(_ser(band, "Reconstructed Target"))) if "Reconstructed Target" in band else None
-    p36 = panel(36).get("A")
-    out["solar"] = _last(_ser(p36, "Solar")) if p36 else None
+    out["solar"] = _last(_ser(panel(113, 24, CLIMATE).get("A")))  # W/m² (panel 36 "Solar" farklı birimde, 70k+ çıkıyordu)
     return out
 
 
@@ -174,7 +176,7 @@ def zones_24h():
                       "low": c(low.get(ts)), "high": c(high.get(ts))})
         krows.append({"time": label, "temp": c(avg_f), "target": c(tgt.get(ts)), "vpd": None if vavg is None or pd.isna(vavg) else round(vavg, 2),
                       "dew": r1(dew_c(avg_c, rh)), "co2": None, "solar": None})
-    sol = _ser(panel(36).get("A"), "Solar").resample("h").mean().tz_convert(TZ) if panel(36).get("A") else pd.Series(dtype=float)
+    sol = _ser(panel(113, 24, CLIMATE).get("A")).resample("h").mean().tz_convert(TZ)
     for k in krows:
         k["solar"] = next((None if pd.isna(v) else round(v) for ts, v in sol.items() if ts.strftime("%H:%M") == k["time"]), None)
     return zrows, krows
@@ -242,8 +244,27 @@ def weather_latest():
     sol = _last(_ser(panel(113, 24, CLIMATE).get("A")))
     if ts.empty and rh is None:
         return None
+    wind = _last(_ser(panel(14, 24, WEATHER).get("A")))  # mph
+    wdir = _last(_ser(panel(41, 24, WEATHER).get("A")))
+    pres = _last(_ser(panel(15, 24, WEATHER).get("A")))  # hPa
     return {"time": None if ts.empty else ts.index[-1].isoformat(), "temperature_c": None if ts.empty else _f_to_c(float(ts.iloc[-1])),
-            "humidity": rh, "wind_speed_kmh": None, "wind_direction_deg": None, "rainfall_mm": None, "solar_irradiance_w_m2": sol}
+            "humidity": rh, "wind_speed_kmh": None if wind is None else wind * 1.609344, "wind_direction_deg": wdir,
+            "pressure_hpa": pres, "rainfall_mm": None,  # yağış yalnızca tahmin olarak yayınlanıyor, gözlem yok
+            "solar_irradiance_w_m2": sol}
+
+
+# ---------- Equipment ve Crops dashboard'ları ----------
+def equipment_hours():
+    """Son 24 saatteki ekipman çalışma süresi (saat). Anlık açık/kapalı durumu yayınlanmıyor."""
+    return {next(k for k in fr if k.lower() != "time"): _last(_ser(fr)) for fr in panel(10, 24, EQUIPMENT).values()}
+
+
+def crop_stress():
+    """Bugünün VPD/sıcak/soğuk stres saatleri (Crops dashboard'u). Toprak nemi/EC panelleri 0 döndürüyor, o yüzden eklenmedi."""
+    out = {}
+    for key, pid in (("vpd_stress_h", 2), ("heat_stress_h", 3), ("cold_stress_h", 4)):
+        out[key] = _last(_ser(panel(pid, 24, CROPS).get("A")))
+    return out
 
 
 def dew_trend():
