@@ -1,0 +1,10 @@
+.mc { background: var(--card-bg); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 20px 24px; }
+.mc h3 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 600; color: var(--text-main); }
+.mc-note { margin: 0 0 14px; color: var(--text-soft); font-size: 0.85rem; max-width: 80ch; }
+.mc-scroll { overflow-x: auto; }
+.mc table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.mc th, .mc td { text-align: right; padding: 10px 12px; border-top: 1px solid #e2e8f0; color: var(--text-main); white-space: nowrap; }
+.mc thead th { border-top: 0; color: var(--text-soft); font-size: 0.8rem; font-weight: 600; }
+.mc th[scope="row"], .mc thead th:first-child { text-align: left; font-weight: 600; }
+.mc span { display: block; color: var(--text-soft); font-size: 0.75rem; font-weight: 400; }
+.mc-best td, .mc-best th[scope="row"] { background: var(--ok-bg); }

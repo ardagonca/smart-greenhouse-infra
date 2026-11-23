@@ -161,6 +161,15 @@ async def api_ml_predict_today():
 async def api_ml_predict_date(date: str):
     return await _forecast(date)
 
+@app.get("/api/ml/compare")
+def api_ml_compare():
+    """eval_models.py'nin yazdığı model karşılaştırması (zaman bazlı değerlendirme); henüz çalıştırılmadıysa data=None."""
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "ml", "eval_results.json"), encoding="utf-8") as f:
+            return {"data": json.load(f)}
+    except FileNotFoundError:
+        return {"data": None}
+
 @app.on_event("startup")
 async def startup_event():
     await init_db()
