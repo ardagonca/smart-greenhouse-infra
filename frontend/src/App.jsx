@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import Header from './components/Header';
-import Overview from './components/Overview';
-import Analytics from './components/Analytics';
-import Monitoring from './components/Monitoring';
-import SystemHealth from './components/SystemHealth';
+import Header from './components/layout/Header';
+import Overview from './components/pages/Overview';
+import Analytics from './components/pages/Analytics';
+import Monitoring from './components/pages/Monitoring';
+import SystemHealth from './components/pages/SystemHealth';
 
-import WeatherMap from './components/WeatherMap';
+import WeatherMap from './components/pages/WeatherMap';
 import { animate, stagger } from 'motion/react';
 
 function App() {
@@ -64,7 +64,6 @@ function App() {
         try {
           await fetchLatestData();
           setOffline(false);
-          fetch('http://localhost:8000/api/sync/refresh', { method: 'POST' }).catch(() => {}); // eksik saatleri arka planda tamamla
           await sleep(60000);
         } catch (e) {
           setOffline(true);
@@ -116,7 +115,7 @@ function App() {
       {activeTab === 'Weather' && <WeatherMap sensorData={sensorData} />}
       {activeTab === 'Analytics' && <Analytics />}
       <div style={{ display: activeTab === 'Monitoring' ? 'contents' : 'none' }}>
-        <Monitoring />
+        <Monitoring active={activeTab === 'Monitoring'} />
       </div>
       {activeTab === 'System Health' && <SystemHealth sensorData={sensorData} />}
     </div>

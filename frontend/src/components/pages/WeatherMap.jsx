@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, ZoomControl, Polygon, useMapEvents } f
 import L from 'leaflet';
 import { AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { motion } from 'motion/react';
-import { cardIn, CountUp, Reveal } from '../motionKit';
+import { cardIn, CountUp, Reveal } from '../../motionKit';
 import 'leaflet/dist/leaflet.css';
 import './WeatherMap.css';
 

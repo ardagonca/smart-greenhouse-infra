@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { motion, animate } from 'motion/react';
+import { motion, animate, useReducedMotion } from 'motion/react';
 
 // Kısa, sakin giriş animasyonları (0.3-0.9 sn): kartlar sırayla yükselir, sayılar sayarak değişir, grafik soldan açılır
 export const cardIn = (i) => ({ initial: { opacity: 0, y: 24 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.5, delay: 0.1 * i, ease: 'easeOut' } });
@@ -17,8 +17,11 @@ export function CountUp({ value, decimals = 1 }) {
   return <span ref={ref}>{Number.isFinite(num) ? num.toFixed(decimals) : value}</span>;
 }
 
-export const Reveal = ({ children, k }) => (
-  <motion.div key={k} style={{ height: '100%' }} initial={{ clipPath: 'inset(0 100% 0 0)' }} animate={{ clipPath: 'inset(0 0% 0 0)' }} transition={{ duration: 0.9, ease: 'easeInOut' }}>
-    {children}
-  </motion.div>
-);
+export function Reveal({ children, k }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div key={k} style={{ height: '100%' }} initial={{ clipPath: reduce ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)' }} animate={{ clipPath: 'inset(0 0% 0 0)' }} transition={{ duration: reduce ? 0 : 0.9, ease: 'easeInOut' }}>
+      {children}
+    </motion.div>
+  );
+}

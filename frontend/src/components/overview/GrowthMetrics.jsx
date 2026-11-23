@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Calendar from 'react-calendar';
 import './Calendar.css';
 
@@ -6,6 +7,26 @@ export default function GrowthMetrics({ sensorData, selectedDate, setSelectedDat
   const [mounted, setMounted] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef(null);
+  const barRef = useRef(null);
+  const [calPos, setCalPos] = useState({ top: 0, right: 0 });
+
+  // Takvim body'ye (portal) çizilir: .right-col kaydırılabilir olduğu için içinde kalırsa alttaki kartları iter ya da kırpılır
+  const toggleCalendar = () => {
+    if (!showCalendar && barRef.current) {
+      const r = barRef.current.getBoundingClientRect();
+      setCalPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
+    }
+    setShowCalendar(!showCalendar);
+  };
+
+  // Sütun kaydırılır ya da pencere yeniden boyutlanırsa açık takvim yerinden ayrılmasın diye kapat
+  useEffect(() => {
+    if (!showCalendar) return;
+    const close = () => setShowCalendar(false);
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+    return () => { window.removeEventListener('resize', close); window.removeEventListener('scroll', close, true); };
+  }, [showCalendar]);
 
   // Close calendar when clicking outside
   useEffect(() => {
@@ -92,14 +113,14 @@ export default function GrowthMetrics({ sensorData, selectedDate, setSelectedDat
 
   return (
     <>
-      <div className="panel" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', marginBottom: '24px', position: 'relative'}}>
+      <div ref={barRef} className="panel" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', marginBottom: '24px', position: 'relative'}}>
         <div style={{display: 'flex', gap: '8px', alignItems: 'center', color: 'var(--text-muted)'}}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
           <span style={{fontSize: '0.9rem', color: '#0f172a', fontWeight: '500'}}>{getDisplayLabel()}</span>
         </div>
         
         <div 
-          onClick={() => setShowCalendar(!showCalendar)}
+          onClick={toggleCalendar}
           style={{
             fontSize: '0.85rem', 
             color: 'var(--text-muted)', 
@@ -114,14 +135,15 @@ export default function GrowthMetrics({ sensorData, selectedDate, setSelectedDat
           {displayDateStr}
         </div>
 
-        {showCalendar && (
-          <div ref={calendarRef} style={{ position: 'absolute', top: '100%', right: '0', zIndex: 50, marginTop: '8px' }}>
+        {showCalendar && createPortal(
+          <div ref={calendarRef} style={{ position: 'fixed', top: calPos.top, right: calPos.right, zIndex: 1000 }}>
             <Calendar 
               onChange={handleDateChange} 
               value={new Date(selectedDate)}
               calendarType="gregory"
             />
-          </div>
+          </div>,
+          document.body
         )}
 
         <button style={{background: 'none', border: 'none', cursor: 'pointer', color: '#64748b'}}>

@@ -27,6 +27,44 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # 2. MQTT broker: yalnızca docker ağı içinde (host'a port açılmaz)
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: greenhouse_mosquitto
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+    networks:
+      - greenhouse_network
+    restart: unless-stopped
+
+  # 3. Yayıncı: Verdify saatlik arşivi -> MQTT (gerçek sera sensörü yerine geçer)
+  publisher:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.ingest
+    container_name: greenhouse_publisher
+    command: python -u -m ingest.publisher
+    depends_on:
+      - mosquitto
+    networks:
+      - greenhouse_network
+    restart: unless-stopped
+
+  # 3b. Köprü: MQTT -> FastAPI /api/telemetry (kayıt ve canlı yayın API'de)
+  bridge:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.ingest
+    container_name: greenhouse_bridge
+    command: python -u -m ingest.bridge
+    depends_on:
+      - mosquitto
+      - fastapi
+    networks:
+      - greenhouse_network
+    restart: unless-stopped
+
   # 5. React Frontend Paneli - LOKALDE ÇALIŞTIRILIYOR (npm run dev)
   # frontend:
   #   ... (Devre dışı)
@@ -36,4 +74,4 @@ networks:
     driver: bridge
 
 volumes:
-  timescaledb_data:
+  mosquitto_data:

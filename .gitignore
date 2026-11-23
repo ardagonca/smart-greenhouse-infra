@@ -64,3 +64,6 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Tez/rapor çıktıları (repoya girmesin)
+Claude outputs/

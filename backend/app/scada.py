@@ -22,19 +22,19 @@ def get_scada_telemetry():
     r1 = lambda v, n=1: None if v is None else round(v, n)
     actuators = [
         {"id": "heat1", "name": "Isıtıcı 1 (Elektrikli Rezistans)", "category": "heating", "status": status("heat1", "RUNNING", "IDLE"),
-         "runtime_min": runtime.get("heat1"), "description": "Gece & sabah saatlerinde kök bölgesi minimum 18°C koruma rejimi."},
+         "runtime_min": runtime.get("heat1"), "description": "Isıtma ekipmanı (Verdify ekipman kaydı)."},
         {"id": "heat2", "name": "Isıtıcı 2 (Doğalgaz Kazanı)", "category": "heating", "status": status("heat2", "RUNNING", "IDLE"),
-         "runtime_min": runtime.get("heat2"), "description": "Ana sera hacmi sıcaklık destek ünitesi."},
+         "runtime_min": runtime.get("heat2"), "description": "Isıtma ekipmanı (Verdify ekipman kaydı)."},
         {"id": "grow_light_main", "name": "Büyütme Işıkları (Grow Lights Main)", "category": "lighting", "status": status("grow_light_main", "RUNNING", "IDLE"),
-         "runtime_min": runtime.get("grow_light_main"), "description": "Fotosentez takviyesi (DLI hedefi: 14 mol/m²/gün)."},
+         "runtime_min": runtime.get("grow_light_main"), "description": "Büyütme ışığı (Verdify ekipman kaydı)."},
         {"id": "irrigation_wall", "name": "Dikey Duvar Sulama (Irrigation Wall)", "category": "irrigation", "status": status("drip_wall", "RUNNING", "IDLE"),
-         "runtime_min": runtime.get("drip_wall"), "description": "Kök bölgesi nem sensörüne bağlı otomatik damla hat."},
+         "runtime_min": runtime.get("drip_wall"), "description": "Sulama hattı (Verdify ekipman kaydı)."},
         {"id": "vent", "name": "Çatı Havalandırma Menfezleri (Roof Vents)", "category": "ventilation", "status": status("vent", "OPEN", "CLOSED"),
-         "runtime_min": runtime.get("vent"), "description": "Termal koruma için kapalı konumda tutuluyor."},
+         "runtime_min": runtime.get("vent"), "description": "Çatı havalandırma menfezleri (Verdify ekipman kaydı)."},
         {"id": "fan1", "name": "Sirkülasyon Fanı 1 (Canopy Airflow)", "category": "ventilation", "status": status("fan1", "RUNNING", "STANDBY"),
-         "runtime_min": runtime.get("fan1"), "description": "Hava durgunluğu ve mikro-iklim oluşumunu engeller."},
+         "runtime_min": runtime.get("fan1"), "description": "Hava sirkülasyon fanı (Verdify ekipman kaydı)."},
         {"id": "fog", "name": "Yüksek Basınç Sisleme (Fog / Mister)", "category": "humidity", "status": status("fog", "ACTIVE", "STANDBY"),
-         "runtime_min": runtime.get("fog"), "description": "VPD > 1.4 kPa aşıldığında ani yaprak nemlendirmesi."},
+         "runtime_min": runtime.get("fog"), "description": "Sisleme ekipmanı (Verdify ekipman kaydı)."},
     ]
 
     names = {"east": "Doğu Bölgesi (East Zone)", "west": "Batı Bölgesi (West Zone)", "north": "Kuzey Bölgesi (North Zone)", "center": "Merkez Sera (Center / Target)"}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CountUp } from '../motionKit';
+import { CountUp } from '../../motionKit';
 
 export default function CurrentConditions({ sensorData, selectedDate }) {
   const isToday = !selectedDate || selectedDate === new Date().toISOString().split('T')[0];

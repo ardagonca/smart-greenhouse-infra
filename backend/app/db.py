@@ -14,12 +14,14 @@ async def init_db():
     print("Connecting to database...")  # URL şifre içerir, log'a yazma
     for attempt in range(1, 6):  # Supabase geçici zaman aşımı verirse API ölmesin
         try:
-            pool = await asyncpg.create_pool(DB_URL, timeout=20)
+            pool = await asyncpg.create_pool(DB_URL, timeout=60)  # yavaş ağda bağlantı 20 sn'yi aşabiliyor
             break
         except Exception as e:
             print(f"DB bağlantısı başarısız ({attempt}/5): {type(e).__name__}")
             if attempt == 5:
-                raise
+                # API ayakta kalsın: panelin çoğu Verdify'ın canlı verisini kullanır; pool=None olan fonksiyonlar boş döner
+                print("Veritabanı olmadan devam ediliyor; yeniden başlatınca tekrar denenir.")
+                return
             await asyncio.sleep(5)
 
     async with pool.acquire() as conn:

@@ -8,6 +8,7 @@ import os
 import sys
 import time
 from collections import deque
+from datetime import datetime, timedelta, timezone
 
 try:
     import torch
@@ -70,6 +71,13 @@ if HAS_ML:
         print(f"Warning: Scaler not found at {SCALER_PATH}")
 
 
+def _fresh(t, hours=3):
+    if t is None:
+        return False
+    if t.tzinfo:
+        t = t.astimezone(timezone.utc).replace(tzinfo=None)
+    return datetime.utcnow() - t < timedelta(hours=hours)
+
 @app.post("/api/telemetry")
 async def api_telemetry(payload: dict):
     # Map keys for AI Preprocessor to match feature_names
@@ -80,7 +88,7 @@ async def api_telemetry(payload: dict):
     
     # Fetch latest outdoor weather for AI features
     outdoor_data = await get_latest_outdoor_weather()
-    if outdoor_data:
+    if outdoor_data and _fresh(outdoor_data.get('time')):  # bayat dış hava ile yapay zekâ skoru üretme
         ml_payload['outdoor_temp'] = outdoor_data['temperature_c']
         ml_payload['outdoor_hum'] = outdoor_data['humidity']
         ml_payload['solar'] = outdoor_data['solar_irradiance_w_m2']
@@ -156,8 +164,6 @@ async def api_ml_predict_date(date: str):
 @app.on_event("startup")
 async def startup_event():
     await init_db()
-    from app.backfill import safe_backfill
-    asyncio.create_task(safe_backfill())  # eksik saatleri Grafana'dan arka planda tamamla
 
 _last_hit = time.time()
 
@@ -211,8 +217,8 @@ def read_root():
     return {"message": "Greenhouse AI API is running."}
 
 @app.get("/api/analytics/historical")
-async def api_historical_data():
-    data = await get_historical_data(hours=24)
+async def api_historical_data(hours: int = 24):
+    data = await get_historical_data(hours=max(1, min(hours, 720)))  # en fazla 30 gün
     return {"data": data}
 
 # --- Gerçek veri: Verdify Grafana (verdify-tsdb); erişilemezse yerel TimescaleDB (saatlik arşiv) ---
@@ -222,13 +228,6 @@ async def api_latest_conditions():
     from app import public_data as pdata
     data = await asyncio.to_thread(pdata.latest_conditions) or await get_latest_data()
     return {"data": data}
-
-@app.post("/api/sync/refresh")
-async def api_sync_refresh():
-    """Arayüz açıldığında çağrılır: eksik saatleri arka planda tamamlar (10 dk'da bir)."""
-    from app.backfill import safe_backfill
-    asyncio.create_task(safe_backfill())
-    return {"status": "started"}
 
 @app.get("/api/conditions/date")
 async def api_conditions_by_date(date: str):

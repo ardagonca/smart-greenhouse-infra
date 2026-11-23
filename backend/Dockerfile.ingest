@@ -1,0 +1,6 @@
+# Hafif veri alım imajı (torch yok): yayıncı ve köprü bu imajdan çalışır
+FROM python:3.10-slim
+WORKDIR /app
+COPY requirements-ingest.txt .
+RUN pip install --no-cache-dir -r requirements-ingest.txt
+COPY ingest/ ./ingest/

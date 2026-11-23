@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import CurrentConditions from './CurrentConditions';
-import Alerts from './Alerts';
-import ThreeDModel from './ThreeDModel';
-import GrowthMetrics from './GrowthMetrics';
-import ClimateTrends from './ClimateTrends';
+import CurrentConditions from '../overview/CurrentConditions';
+import Alerts from '../overview/Alerts';
+import ThreeDModel from '../overview/ThreeDModel';
+import GrowthMetrics from '../overview/GrowthMetrics';
+import ClimateTrends from '../overview/ClimateTrends';
 
 export default function Overview({ sensorData, aiRisk }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
