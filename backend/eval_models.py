@@ -7,6 +7,9 @@ Protokol (sızıntı önlemleri):
 - Ölçekleme/normalizasyon ve sigma yalnızca eğitim kısmından. Hiperparametreler sabit, test üzerinde ayar YOK.
 - Güven aralığı: tahminler birleştirilip 7 günlük blok bootstrap (günler korelasyonlu).
 """
+import json
+import os
+
 import numpy as np
 import pandas as pd
 import torch
@@ -154,11 +157,18 @@ def main():
     days = ((tt - tt[0]).total_seconds() // 86400).astype(int).values
     print(f"\nDeğerlendirilen {len(te_all)} örnek | test risk oranı: {(yt < THR).mean():.1%}\n")
     print(f"{'model':22s} {'MAE':>18s} {'PR-AUC':>18s} {'recall':>18s} {'MCC':>18s}  prec")
+    rows = []
     for nme in names:
         p = P[nme][te_all]
         m, c = metrics(yt, p), ci(yt, p, days)
         f = lambda k: f"{m[k]:.3f} [{c[k][0]:.3f},{c[k][1]:.3f}]"
         print(f"{nme:22s} {f('MAE'):>18s} {f('PRAUC'):>18s} {f('rec'):>18s} {f('MCC'):>18s}  {m['prec']:.3f}")
+        rows.append({"model": nme, **{k: round(float(m[k]), 3) for k in ("MAE", "PRAUC", "prec", "rec", "MCC")},
+                     "ci": {k: [round(float(c[k][0]), 3), round(float(c[k][1]), 3)] for k in c}})
+    out = {"rows": rows, "samples": int(len(te_all)), "risk_rate": round(float((yt < THR).mean()), 3),
+           "from": f"{tt[0]:%Y-%m-%d}", "to": f"{tt[-1]:%Y-%m-%d}", "blocks": FOLDS, "threshold": THR, "horizon_h": HOR}
+    with open(os.path.join(os.path.dirname(__file__), "app", "ml", "eval_results.json"), "w", encoding="utf-8") as fh:
+        json.dump(out, fh, ensure_ascii=False, indent=1)
 
     print("\n== Blok bazında (GBM) MAE / PR-AUC ==")
     for k in range(FOLDS):

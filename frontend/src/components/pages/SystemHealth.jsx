@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
+import ModelComparison from '../monitoring/ModelComparison';
 import './SystemHealth.css';
 
 const API = 'http://localhost:8000';
@@ -240,6 +241,8 @@ export default function SystemHealth({ sensorData }) {
           </motion.article>
         ))}
       </motion.section>
+
+      <ModelComparison />
 
       <p className="sh-note sh-muted">
         Veri kaynağı: Verdify (Colorado) seranın herkese açık verisi; yaklaşık saatlik arşive kaydedilir.
