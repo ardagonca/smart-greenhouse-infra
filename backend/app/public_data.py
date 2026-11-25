@@ -33,7 +33,9 @@ def _cached(key, ttl, fn):
         val = fn()
     except Exception as e:
         print(f"public_data {key}: {e}")
-        return hit[1] if hit else None  # hata olursa eski değer
+        val = hit[1] if hit else None  # hata olursa eski değer; 15 sn yeniden deneme (DNS kesintisinde her istek takılmasın)
+        _cache[key] = (time.time() - ttl + 15, val)
+        return val
     _cache[key] = (time.time(), val)
     return val
 
@@ -238,7 +240,7 @@ def solar_trend(rng):
 
 
 def weather_latest():
-    """Dış ortam anlık: sıcaklık, nem, güneş. Rüzgâr ve yağış Verdify'ın açık verisinde yok (None)."""
+    """Dış ortam anlık: sıcaklık, nem, güneş. Yağış gözlemi yok, yalnız olasılık tahmini."""
     ts = _ser(panel(9, 24, CLIMATE).get("A")).dropna()
     rh = _last(_ser(panel(10, 24, CLIMATE).get("A")))
     sol = _last(_ser(panel(113, 24, CLIMATE).get("A")))
@@ -247,9 +249,11 @@ def weather_latest():
     wind = _last(_ser(panel(14, 24, WEATHER).get("A")))  # mph
     wdir = _last(_ser(panel(41, 24, WEATHER).get("A")))
     pres = _last(_ser(panel(15, 24, WEATHER).get("A")))  # hPa
+    pp = _ser(panel(32, 24, WEATHER).get("A")).dropna()  # yağış olasılığı (%); aynı paneldeki yağmur miktarı serisi saatlerce bayat kalıyor
+    fresh = not pp.empty and pd.Timestamp.now(tz="UTC") - pp.index[-1] < pd.Timedelta(hours=2)
     return {"time": None if ts.empty else ts.index[-1].isoformat(), "temperature_c": None if ts.empty else _f_to_c(float(ts.iloc[-1])),
             "humidity": rh, "wind_speed_kmh": None if wind is None else wind * 1.609344, "wind_direction_deg": wdir,
-            "pressure_hpa": pres, "rainfall_mm": None,  # yağış yalnızca tahmin olarak yayınlanıyor, gözlem yok
+            "pressure_hpa": pres, "precip_prob_pct": float(pp.iloc[-1]) if fresh else None,  # tahmin; yağış gözlemi yayınlanmıyor
             "solar_irradiance_w_m2": sol}
 
 
@@ -269,8 +273,9 @@ def crop_stress():
 
 def dew_trend():
     """Dış ortam çiy noktası ve hava sıcaklığı (°C), son 24 saat saatlik."""
-    p = panel(9, 24, CLIMATE)
-    t = _ser(p.get("A")).resample("h").mean().tz_convert(TZ)
-    d = _ser(p.get("D")).resample("h").mean().tz_convert(TZ)
-    return [{"name": i.strftime("%H:%M"), "current": round(_f_to_c(d[i]), 1), "baseline": round(_f_to_c(t[i]), 1)}
-            for i in t.index[-24:] if i in d.index and t[i] == t[i] and d[i] == d[i]]
+    t, rh = _ser(panel(9, 24, CLIMATE).get("A")), _ser(panel(10, 24, CLIMATE).get("A"))  # panel 9 "D" iç ortamın çiy noktası, kullanılmaz
+    if t.empty or rh.empty:
+        return []
+    t, rh = t.resample("h").mean().tz_convert(TZ), rh.resample("h").mean().tz_convert(TZ)
+    return [{"name": i.strftime("%H:%M"), "current": round(dew_c(_f_to_c(t[i]), rh[i]), 1), "baseline": round(_f_to_c(t[i]), 1)}
+            for i in t.index[-24:] if i in rh.index and t[i] == t[i] and rh[i] > 0]

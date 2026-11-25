@@ -16,6 +16,7 @@ export default function LeafCheck() {
   const pick = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    e.target.value = ''; // aynı dosya yeniden seçilince de onChange tetiklensin
     setPrev(URL.createObjectURL(file)); setR(null); setErr(null); setBusy(true);
     try {
       const fd = new FormData();

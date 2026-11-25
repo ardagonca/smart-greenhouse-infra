@@ -26,7 +26,9 @@ function App() {
         try {
           const payload = JSON.parse(event.data);
           if (payload.type === 'sensor_update') {
-            setSensorData(payload.data);
+            // MQTT hattı arşiv saatlerini yeniden yayınlar (geçmiş kayıt); yalnız mevcut değerden daha yeni olanı göster
+            const t = new Date(payload.data.timestamp);
+            setSensorData((prev) => (prev && !(t > new Date(prev.time || prev.timestamp)) ? prev : { ...payload.data, time: payload.data.timestamp }));
           } else if (payload.type === 'ai_prediction') {
             setAiRisk(payload);
           }

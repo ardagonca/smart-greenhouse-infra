@@ -10,6 +10,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: greenhouse_api
+    dns: [1.1.1.1, 8.8.8.8]  # Docker Desktop'ın iç DNS'i zaman zaman dış adresleri çözemiyor
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - DB_URL=${SUPABASE_DB_URL}
@@ -44,6 +45,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.ingest
     container_name: greenhouse_publisher
+    dns: [1.1.1.1, 8.8.8.8]  # Docker Desktop'ın iç DNS'i zaman zaman dış adresleri çözemiyor
     command: python -u -m ingest.publisher
     depends_on:
       - mosquitto

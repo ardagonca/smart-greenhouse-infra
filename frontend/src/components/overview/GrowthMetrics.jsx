@@ -47,7 +47,7 @@ export default function GrowthMetrics({ sensorData, selectedDate, setSelectedDat
   const [trends, setTrends] = useState([]);
 
   useEffect(() => {
-    fetch(`${API}/api/trends/date?date=${selectedDate}`)
+    const load = () => fetch(`${API}/api/trends/date?date=${selectedDate}`)
       .then(res => res.json())
       .then(json => {
         if (json && json.data) {
@@ -60,6 +60,9 @@ export default function GrowthMetrics({ sensorData, selectedDate, setSelectedDat
         console.error("Error fetching trends for insights:", err);
         setTrends([]);
       });
+    load();
+    const id = setInterval(load, 600000); // yeni saatler 10 dakikada bir gelebilir
+    return () => clearInterval(id);
   }, [selectedDate]);
 
   const validTemps = trends.filter(t => t.temperature !== null);

@@ -49,7 +49,7 @@ function LineBlock({ data, dataKey, name, stroke, width, limit, animate, domain 
 }
 
 function downloadCsv(rows, slug) {
-  const lines = ['zaman,sicaklik_f,nem,vpd_kpa,risk', ...rows.map(d => [d.time, d.temp, d.hum, d.vpd, d.risk].join(','))];
+  const lines = ['zaman,sicaklik_c,nem,vpd_kpa,risk', ...rows.map(d => [d.time, d.temp, d.hum, d.vpd, d.risk].join(','))];
   const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' }));
   const a = document.createElement('a');
   a.href = url;
@@ -77,7 +77,7 @@ export default function Analytics() {
         const opts = last - first > 36 * 60 * 60 * 1000
           ? { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }
           : { hour: '2-digit', minute: '2-digit' };
-        setData(rows.map(d => ({ ...d, timeLabel: new Date(d.time).toLocaleString('tr-TR', opts) })));
+        setData(rows.map(d => ({ ...d, temp: d.temp == null ? null : (d.temp - 32) * 5 / 9, timeLabel: new Date(d.time).toLocaleString('tr-TR', opts) })));
         setFailed(false);
         setLoading(false);
       })
@@ -190,10 +190,18 @@ export default function Analytics() {
 
           <motion.div variants={item} className="an-minor">
             <section aria-labelledby="an-temp">
-              <h3 id="an-temp">Ortalama sıcaklık (°F)</h3>
+              <h3 id="an-temp">Ortalama sıcaklık (°C)</h3>
               <p>Saatlik ortalama iç ortam sıcaklığı</p>
-              <div className="an-minor-chart" role="img" aria-label="Ortalama sıcaklık grafiği, °F">
-                <LineBlock data={data} dataKey="temp" name="Sıcaklık (°F)" stroke="#2563eb" width={2} animate={animate} />
+              <div className="an-minor-chart" role="img" aria-label="Ortalama sıcaklık grafiği, °C">
+                <LineBlock data={data} dataKey="temp" name="Sıcaklık (°C)" stroke="#2563eb" width={2} animate={animate} />
+              </div>
+            </section>
+
+            <section aria-labelledby="an-hum">
+              <h3 id="an-hum">Ortalama nem (%)</h3>
+              <p>Saatlik ortalama iç ortam bağıl nemi</p>
+              <div className="an-minor-chart" role="img" aria-label="Ortalama nem grafiği, yüzde">
+                <LineBlock data={data} dataKey="hum" name="Nem (%)" stroke="#0891b2" width={2} animate={animate} />
               </div>
             </section>
 

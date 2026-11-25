@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 import asyncio
 import json
 import os
+import subprocess
 import sys
 import time
 from collections import deque
@@ -21,6 +22,7 @@ except ImportError:
     HAS_ML = False
     print("PyTorch or ML modules not installed. Running without ML features.")
 from app.db import init_db, close_db, insert_metrics, get_historical_data, get_latest_outdoor_weather, get_profile, update_profile
+from app import db
 from app.vision import get_verdify_vision_data, diagnose_leaf_image
 from app.scada import get_scada_telemetry
 
@@ -94,6 +96,9 @@ async def api_telemetry(payload: dict):
         ml_payload['solar'] = outdoor_data['solar_irradiance_w_m2']
         ml_payload['wind_speed'] = outdoor_data['wind_speed_kmh']
         sensor_buffer.append(ml_payload)  # no real outdoor data -> no ML sample
+
+    if db.pool is None:  # kaydedilemeyecek mesaja "success" deme; köprü yeniden denesin
+        return JSONResponse(status_code=503, content={"detail": "Veritabanı bağlı değil"})
 
     # Broadcast raw sensor data to UI
     await broadcast_message({"type": "sensor_update", "data": payload})
@@ -173,6 +178,16 @@ def api_ml_compare():
 @app.on_event("startup")
 async def startup_event():
     await init_db()
+    asyncio.create_task(_db_retry_loop())
+
+async def _db_retry_loop():
+    """Açılışta veritabanına ulaşılamadıysa dakikada bir yeniden dener."""
+    while db.pool is None:
+        await asyncio.sleep(60)
+        try:
+            await init_db()
+        except Exception as e:
+            print(f"db retry: {type(e).__name__}")
 
 _last_hit = time.time()
 
@@ -208,6 +223,11 @@ async def _retrain_loop():
             if time.time() - os.path.getmtime(forecast.PATH) > RETRAIN_DAYS * 86400:
                 await asyncio.to_thread(forecast.train)
                 forecast._bundle = None  # sonraki tahmin yeni dosyayı yükler
+            ev = os.path.join(os.path.dirname(__file__), "ml", "eval_results.json")
+            if not os.path.exists(ev) or time.time() - os.path.getmtime(ev) > RETRAIN_DAYS * 86400:
+                # ayrı süreç: dakikalarca süren torch eğitimi API'yi kilitlemesin
+                await asyncio.to_thread(subprocess.run, [sys.executable, "eval_models.py"], check=True, timeout=3600,
+                                        cwd=os.path.join(os.path.dirname(__file__), ".."), capture_output=True)
         except Exception as e:
             print(f"retrain: {e}")
         await asyncio.sleep(3600)

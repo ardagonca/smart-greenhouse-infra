@@ -92,6 +92,9 @@ def get_verdify_vision_data():
     return result
 
 
+# Yaprak olmayan görüntüyü eler: 0,5'te %24'ü geçiyordu, 0,75'te %6'sı (390 duvar kâğıdı/kamera kırpığı); gerçek yaprakların %98,7'si geçer (1500 test görüntüsü)
+# shortcut: ayrı bir "yaprak mı" modeli yok, hatalı kabul sorun olursa yaprak olmayan sınıfla yeniden eğit
+CONF_MIN = 0.75
 _ML_DIR = os.path.join(os.path.dirname(__file__), "ml")
 _model = {"sess": None, "classes": None, "acc": None}
 
@@ -168,13 +171,13 @@ def diagnose_leaf_image(image_bytes: bytes):
         idx = np.argsort(p)[::-1][:3]
         top3 = [{"class": m["classes"][i], "label": _label(m["classes"][i]), "prob": round(float(p[i]), 4)} for i in idx]
         conf = float(p[idx[0]])
-        confident = conf >= 0.5
+        confident = conf >= CONF_MIN
         label = top3[0]["label"]
         healthy = top3[0]["class"].endswith("healthy")
 
         if not confident:
             diagnosis, severity, color = f"Emin değilim — en olası: {label}", "Uncertain", "#f59e0b"
-            recommendation = "Sonuç güvenilir değil. Daha net, tek yapraklı ve düz arka planlı bir fotoğraf yükleyin."
+            recommendation = "Sonuç güvenilir değil. Görüntü yaprak olmayabilir ya da modelin bilmediği bir bitkidir. Daha net, tek yapraklı ve düz arka planlı bir fotoğraf yükleyin."
         elif healthy:
             diagnosis, severity, color = label, "Optimal", "#10b981"
             recommendation = "Yaprak sağlıklı görünüyor. Mevcut bakım ve iklim rejimini koruyun."

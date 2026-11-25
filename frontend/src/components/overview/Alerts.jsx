@@ -13,7 +13,7 @@ export default function Alerts({ aiRisk }) {
     else riskLevel = 'low';
   }
 
-  const alertCount = riskLevel === 'high' ? 1 : 0;
+  const alertCount = riskLevel === 'high' || riskLevel === 'moderate' ? 1 : 0; // ekranda uyarı kartı çıkıyorsa sayaç da 1
 
     const getAlertUI = () => {
     switch (riskLevel) {

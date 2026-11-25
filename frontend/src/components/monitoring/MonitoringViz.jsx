@@ -56,11 +56,11 @@ export function VpdBullet({ value, target }) {
         <div className="mv-band" style={{ left: pos(0.8), width: `${((1.2 - 0.8) / SCALE_MAX) * 100}%` }} />
         {target != null && <div className="mv-target" style={{ left: pos(target) }} />}
         {v != null && (
-          <div className="mv-dot-lane">
-            {/* şerit track genişliğinde; translateX yüzdesi track'e göre -> layout tetiklenmez */}
-            <motion.div className={`mv-dot${off ? ' off' : ''}`} initial={{ x: reduce ? xOf(v) : '-100%' }} animate={{ x: xOf(v) }}
-              transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 70, damping: 16 }} />
-          </div>
+          /* kayan öğe şeridin kendisi (track genişliğinde): translateX yüzdesi öğenin kendi genişliğine göredir */
+          <motion.div className="mv-dot-lane" initial={{ x: reduce ? xOf(v) : '-100%' }} animate={{ x: xOf(v) }}
+              transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 70, damping: 16 }}>
+            <div className={`mv-dot${off ? ' off' : ''}`} />
+          </motion.div>
         )}
       </div>
       <div className="mv-bullet-scale">{[[0, '0'], [0.8, '0,8'], [1.2, '1,2'], [2, '2,0']].map(([v, l]) => <span key={l} style={{ left: pos(v) }}>{l}</span>)}</div>

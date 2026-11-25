@@ -63,7 +63,7 @@ export default function WeatherMap({ sensorData }) {
 
   const temp = weatherData?.temperature_c != null ? weatherData.temperature_c.toFixed(1) : '--';
   const humidity = weatherData?.humidity != null ? weatherData.humidity.toFixed(0) : '--';
-  const rainfall = weatherData?.rainfall_mm != null ? weatherData.rainfall_mm.toFixed(1) : '--';
+  const rainChance = weatherData?.precip_prob_pct != null ? weatherData.precip_prob_pct.toFixed(0) : '--';
   const windSpeed = weatherData?.wind_speed_kmh != null ? weatherData.wind_speed_kmh.toFixed(1) : '--';
   
   // Use solar irradiance instead of PM2.5 since we have outdoor solar data
@@ -109,8 +109,8 @@ export default function WeatherMap({ sensorData }) {
       <div class="floating-bubbles-map-anchored" style="transform: scale(${clampedScale}); transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);">
         <div class="bubble bubble-rain">
           <div class="icon">🌧️</div>
-          <div class="value">${rainfall} <span>mm</span></div>
-          <div class="label">RAINFALL</div>
+          <div class="value">${rainChance} <span>%</span></div>
+          <div class="label">RAIN CHANCE</div>
         </div>
         <div class="bubble bubble-temp">
           <div class="icon">☀️</div>
@@ -249,7 +249,7 @@ export default function WeatherMap({ sensorData }) {
           <div className="carbon-offset">
             <div className="carbon-leaf">💧</div>
             <div className="carbon-info">
-              <span className="label">Condensation Risk (Dew Point)</span>
+              <span className="label">Indoor Dew Point</span>
               <span className="value"><CountUp value={dewPoint} /> °C</span>
             </div>
           </div>

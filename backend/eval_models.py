@@ -86,6 +86,22 @@ def ci(y, p, days, keys=("MAE", "PRAUC", "rec", "MCC")):
     return {k: (np.nanpercentile(v, 2.5), np.nanpercentile(v, 97.5)) for k, v in res.items()}
 
 
+def paired_diff(y, pa, pb, days, keys=("MAE", "PRAUC", "MCC")):
+    """İki modelin farkı (a - b), aynı haftalar üzerinde eşli blok bootstrap. Aralık 0'ı içermiyorsa fark anlamlıdır
+    (ayrı ayrı aralıkların örtüşmesi bunu göstermez)."""
+    rng = np.random.default_rng(0)
+    wk = np.asarray(days) // 7
+    groups = [np.where(wk == w)[0] for w in np.unique(wk)]
+    res = {k: [] for k in keys}
+    for _ in range(BOOT):
+        ix = np.concatenate([groups[i] for i in rng.integers(0, len(groups), len(groups))])
+        a, b = metrics(y[ix], pa[ix]), metrics(y[ix], pb[ix])
+        for k in keys:
+            res[k].append(a[k] - b[k])
+    a, b = metrics(y, pa), metrics(y, pb)
+    return {k: {"diff": round(float(a[k] - b[k]), 3), "ci": [round(float(np.nanpercentile(v, q)), 3) for q in (2.5, 97.5)]} for k, v in res.items()}
+
+
 def runs(flag, times):
     """Saat bitişikliği korunarak ardışık True bloklarının (başlangıç, bitiş) indeksleri."""
     out, s = [], None
@@ -165,10 +181,14 @@ def main():
         print(f"{nme:22s} {f('MAE'):>18s} {f('PRAUC'):>18s} {f('rec'):>18s} {f('MCC'):>18s}  {m['prec']:.3f}")
         rows.append({"model": nme, **{k: round(float(m[k]), 3) for k in ("MAE", "PRAUC", "prec", "rec", "MCC")},
                      "ci": {k: [round(float(c[k][0]), 3), round(float(c[k][1]), 3)] for k in c}})
-    out = {"rows": rows, "samples": int(len(te_all)), "risk_rate": round(float((yt < THR).mean()), 3),
+    diff = paired_diff(yt, P["CNN-LSTM"][te_all], P["GBM"][te_all], days)
+    print("CNN-LSTM - GBM (eşli bootstrap):", diff)
+    out = {"rows": rows, "cnn_minus_gbm": diff, "samples": int(len(te_all)), "risk_rate": round(float((yt < THR).mean()), 3),
            "from": f"{tt[0]:%Y-%m-%d}", "to": f"{tt[-1]:%Y-%m-%d}", "blocks": FOLDS, "threshold": THR, "horizon_h": HOR}
-    with open(os.path.join(os.path.dirname(__file__), "app", "ml", "eval_results.json"), "w", encoding="utf-8") as fh:
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "ml", "eval_results.json")
+    with open(path + ".tmp", "w", encoding="utf-8") as fh:
         json.dump(out, fh, ensure_ascii=False, indent=1)
+    os.replace(path + ".tmp", path)  # API yarım dosya okumasın
 
     print("\n== Blok bazında (GBM) MAE / PR-AUC ==")
     for k in range(FOLDS):

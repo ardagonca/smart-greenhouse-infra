@@ -17,23 +17,23 @@ export default function ModelComparison() {
     fetch(`${API}/api/ml/compare`).then((r) => r.json()).then((j) => setD(j.data), () => setD(null));
   }, []);
   if (d === undefined) return null;
-  if (!d) return <p className="mc-note">Model karşılaştırması henüz üretilmedi (docker exec greenhouse_api python eval_models.py).</p>;
+  if (!d) return <p className="cmp-note">Model karşılaştırması henüz üretilmedi (docker exec greenhouse_api python eval_models.py).</p>;
   const best = Math.min(...d.rows.map((r) => r.MAE));
   return (
-    <section className="mc" aria-labelledby="mc-h">
-      <h3 id="mc-h">Model doğruluğu: {d.horizon_h} saat sonrası VPD tahmini</h3>
-      <p className="mc-note">
+    <section className="cmp" aria-labelledby="cmp-h">
+      <h3 id="cmp-h">Model doğruluğu: {d.horizon_h} saat sonrası VPD tahmini</h3>
+      <p className="cmp-note">
         {d.from} – {d.to} arası {d.samples} saat, {d.blocks} ardışık test bloğu (eğitim hep testten öncedir). Risk = tahmin &lt; {d.threshold} kPa;
         testte risk oranı %{Math.round(d.risk_rate * 100)}. Köşeli parantez: %95 güven aralığı.
       </p>
-      <div className="mc-scroll">
+      <div className="cmp-scroll">
         <table>
           <thead>
             <tr><th>Model</th><th>MAE (kPa) ↓</th><th>PR-AUC ↑</th><th>Yakalama ↑</th><th>MCC ↑</th></tr>
           </thead>
           <tbody>
             {d.rows.map((r) => (
-              <tr key={r.model} className={r.MAE === best ? 'mc-best' : ''}>
+              <tr key={r.model} className={r.MAE === best ? 'cmp-best' : ''}>
                 <th scope="row">{r.model}<span>{NOTE[r.model]}</span></th>
                 <td>{f(r.MAE)}<span>{rng(r.ci.MAE)}</span></td>
                 <td>{f(r.PRAUC)}<span>{rng(r.ci.PRAUC)}</span></td>
@@ -44,6 +44,13 @@ export default function ModelComparison() {
           </tbody>
         </table>
       </div>
+      {d.cnn_minus_gbm && (
+        <p className="cmp-note">
+          CNN-LSTM − GBM farkı (eşli bootstrap, %95): {Object.entries(d.cnn_minus_gbm).map(([k, v]) => (
+            `${k === 'PRAUC' ? 'PR-AUC' : k} ${f(v.diff)} [${f(v.ci[0])}; ${f(v.ci[1])}] ${v.ci[0] > 0 || v.ci[1] < 0 ? 'anlamlı' : 'anlamlı değil'}`
+          )).join(' · ')}
+        </p>
+      )}
     </section>
   );
 }

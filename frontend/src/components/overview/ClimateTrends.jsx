@@ -17,7 +17,7 @@ export default function ClimateTrends({ selectedDate }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${API}/api/trends/date?date=${selectedDate}`)
+    const load = () => fetch(`${API}/api/trends/date?date=${selectedDate}`)
       .then(res => res.json())
       .then(json => {
         if (json && json.data) {
@@ -36,6 +36,9 @@ export default function ClimateTrends({ selectedDate }) {
         setData([]);
         setLoading(false);
       });
+    load();
+    const id = setInterval(load, 600000);
+    return () => clearInterval(id);
   }, [selectedDate]);
 
   if (loading) {
