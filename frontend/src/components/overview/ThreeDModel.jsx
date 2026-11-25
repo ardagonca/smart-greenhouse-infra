@@ -175,7 +175,7 @@ export default function ThreeDModel() {
             </div>
             <div>
               <div style={{color: 'var(--text-muted)'}}>Crop</div>
-              <div style={{fontWeight: '600', color: 'var(--text-main)'}}>Heirloom Tomatoes</div>
+              <div style={{fontWeight: '600', color: 'var(--text-main)'}}>Marul (Lactuca sativa)</div>
             </div>
             <div>
               <div style={{color: 'var(--text-muted)'}}>Planting Date</div>

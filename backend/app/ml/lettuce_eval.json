@@ -1,0 +1,146 @@
+{
+ "crop": "Marul (Lactuca sativa)",
+ "model": "convnext_tiny.fb_in22k (ince ayar)",
+ "crop_ratio": 0.7,
+ "classes": [
+  "healthy",
+  "downy_mildew",
+  "other_fungal",
+  "bacterial",
+  "viral"
+ ],
+ "n_groups": 309,
+ "n_images": 633,
+ "macro_f1": {
+  "value": 0.611,
+  "ci": [
+   0.542,
+   0.673
+  ]
+ },
+ "macro_f1_color_tree": {
+  "value": 0.288,
+  "ci": [
+   0.236,
+   0.337
+  ]
+ },
+ "binary_macro_f1": {
+  "value": 0.922,
+  "ci": [
+   0.888,
+   0.953
+  ]
+ },
+ "binary_macro_f1_color_rule": {
+  "value": 0.584,
+  "ci": [
+   0.529,
+   0.641
+  ]
+ },
+ "macro_f1_3class": {
+  "value": 0.834,
+  "ci": [
+   0.781,
+   0.878
+  ]
+ },
+ "per_class": {
+  "healthy": {
+   "precision": 0.884,
+   "recall": 0.917,
+   "f1": 0.9,
+   "n": 108
+  },
+  "downy_mildew": {
+   "precision": 0.779,
+   "recall": 0.905,
+   "f1": 0.837,
+   "n": 105
+  },
+  "other_fungal": {
+   "precision": 0.3,
+   "recall": 0.111,
+   "f1": 0.162,
+   "n": 27
+  },
+  "bacterial": {
+   "precision": 0.471,
+   "recall": 0.5,
+   "f1": 0.485,
+   "n": 16
+  },
+  "viral": {
+   "precision": 0.708,
+   "recall": 0.642,
+   "f1": 0.673,
+   "n": 53
+  }
+ },
+ "confusion": [
+  [
+   99,
+   2,
+   1,
+   0,
+   6
+  ],
+  [
+   2,
+   95,
+   3,
+   1,
+   4
+  ],
+  [
+   3,
+   14,
+   3,
+   5,
+   2
+  ],
+  [
+   0,
+   4,
+   2,
+   8,
+   2
+  ],
+  [
+   8,
+   7,
+   1,
+   3,
+   34
+  ]
+ ],
+ "healthy_false_positive_cv": 0.083,
+ "sources": [
+  "ashishjstar/lettuce-diseases (Kaggle, Apache 2.0)",
+  "santoshshaha/lettuce-plant-disease-dataset (Kaggle, CC0)",
+  "PlantSeg v3 (Zenodo 14935094, CC BY 4.0)",
+  "rathorhome/lettuce-disease (Kaggle, CC0; yalnız dış test)"
+ ],
+ "external_healthy_fp": {
+  "value": 0.0,
+  "n": 30,
+  "ci": [
+   0.0,
+   0.0
+  ]
+ },
+ "external_healthy_fp_color_rule": 1.0,
+ "external_flagged_not_healthy": {
+  "ext_wilt": 0.667,
+  "ext_K": 0.895,
+  "ext_N": 0.867
+ },
+ "lesion": {
+  "auc_healthy_vs_diseased": 0.738,
+  "mask_iou_mean": 0.125,
+  "mask_iou_all_pixels_baseline": 0.31,
+  "n_masks": 122,
+  "no_plant": 0
+ }
+}

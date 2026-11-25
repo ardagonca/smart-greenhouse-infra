@@ -32,8 +32,8 @@ export default function LeafCheck() {
 
   return (
     <section className="lc" aria-labelledby="lc-h">
-      <h3 id="lc-h">Yaprak Hastalık Kontrolü</h3>
-      <p className="lc-note">Bir yaprak fotoğrafı yükleyin, model olası hastalığı tahmin etsin.</p>
+      <h3 id="lc-h">Marul Yaprağı Hastalık Kontrolü</h3>
+      <p className="lc-note">Bir marul yaprağı fotoğrafı yükleyin; model mildiyö, diğer mantar, bakteriyel ve viral belirtileri arar.</p>
       <div className="lc-row">
         <label>Yaprak görüntüsü: <input type="file" accept="image/*" onChange={pick} disabled={busy} /></label>
         {prev && <img className="lc-prev" src={prev} alt="Seçilen yaprak önizlemesi" />}
@@ -61,11 +61,11 @@ export default function LeafCheck() {
             )}
             <p>{r.recommendation}</p>
             {r.note && <p className="lc-note">{r.note}</p>}
-            {r.model_accuracy != null && <p className="lc-note">Model test doğruluğu: {pct(r.model_accuracy > 1 ? r.model_accuracy / 100 : r.model_accuracy)}</p>}
+            {r.macro_f1 && <p className="lc-note">Model makro-F1: {r.macro_f1.value.toFixed(2).replace('.', ',')} (%95 GA {r.macro_f1.ci.map((v) => v.toFixed(2).replace('.', ',')).join('–')}, 5 katlı çapraz doğrulama)</p>}
           </>
         )}
       </div>
-      <p className="lc-warn">PlantVillage laboratuvar fotoğraflarıyla eğitildi; gerçek sera koşullarında doğruluk daha düşük olabilir.</p>
+      <p className="lc-warn">Az sayıda açık lisanslı fotoğrafla (309 özgün görüntü grubu) eğitildi; mantar ve bakteri sınıflarında zayıftır, kesin tanı yerine geçmez.</p>
     </section>
   );
 }

@@ -7,6 +7,8 @@ import re
 import os
 import json
 
+from app.ml.lesion import lesion_ratio
+
 # In-memory cache for Verdify API
 _cache = {
     "crop_health": None,
@@ -92,25 +94,28 @@ def get_verdify_vision_data():
     return result
 
 
-# Yaprak olmayan görüntüyü eler: 0,5'te %24'ü geçiyordu, 0,75'te %6'sı (390 duvar kâğıdı/kamera kırpığı); gerçek yaprakların %98,7'si geçer (1500 test görüntüsü)
-# shortcut: ayrı bir "yaprak mı" modeli yok, hatalı kabul sorun olursa yaprak olmayan sınıfla yeniden eğit
-CONF_MIN = 0.75
+# Eşik altında "emin değilim": 5 katlı çapraz doğrulamada 0,7 ile fotoğrafların %79'u yanıtlanır, yanıtlananların %87'si doğru
+CONF_MIN = 0.7
+# sınıf -> (Türkçe ad, öneri); sıra lettuce_eval.json "classes" ile aynı olmak zorunda değil, ada göre bakılır
+LETTUCE = {
+    "healthy": ("Belirgin hastalık belirtisi yok", "Belirti görülmedi; bu, yaprağın kesin sağlıklı olduğu anlamına gelmez (solgunluk ve besin eksikliği tanınmaz). İzlemeye devam edin."),
+    "downy_mildew": ("Mildiyö (Bremia lactucae)", "Nemi düşürün, havalandırmayı artırın, yaprakları ıslatmadan sulayın; hastalıklı yaprakları uzaklaştırın. Kesin tanı için uzmana danışın."),
+    "other_fungal": ("Diğer mantar (külleme / Septoria)", "Hastalıklı yaprakları ayırın ve havalandırmayı artırın. Bu sınıfta model zayıftır, uzman doğrulaması gerekir."),
+    "bacterial": ("Bakteriyel yaprak lekesi", "Hastalıklı yaprakları ayırın, üstten sulamadan ve ıslak bitkiye dokunmaktan kaçının. Uzman doğrulaması gerekir."),
+    "viral": ("Viral hastalık (marul mozaiği)", "Bitkiyi ayırın, yaprak biti ve diğer taşıyıcıları kontrol edin. Uzman doğrulaması gerekir."),
+}
 _ML_DIR = os.path.join(os.path.dirname(__file__), "ml")
-_model = {"sess": None, "classes": None, "acc": None}
+_model = {"sess": None, "classes": None, "f1": None}
 
 
 def _load_model():
     """ONNX oturumunu ilk çağrıda bir kez yükler; dosya/kütüphane yoksa None döner."""
     if _model["sess"] is None:
         import onnxruntime as ort
-        with open(os.path.join(_ML_DIR, "leaf_classes.json"), encoding="utf-8") as f:
-            _model["classes"] = json.load(f)
-        try:
-            with open(os.path.join(_ML_DIR, "leaf_eval.json"), encoding="utf-8") as f:
-                _model["acc"] = json.load(f).get("test_accuracy")
-        except Exception:
-            _model["acc"] = None
-        _model["sess"] = ort.InferenceSession(os.path.join(_ML_DIR, "leaf_model.onnx"), providers=["CPUExecutionProvider"])
+        with open(os.path.join(_ML_DIR, "lettuce_eval.json"), encoding="utf-8") as f:
+            ev = json.load(f)
+        _model["classes"], _model["f1"], _model["crop"] = ev["classes"], ev["macro_f1"], ev["crop_ratio"]
+        _model["sess"] = ort.InferenceSession(os.path.join(_ML_DIR, "lettuce_model.onnx"), providers=["CPUExecutionProvider"])
     return _model
 
 
@@ -150,12 +155,8 @@ def _color_rule(img):
     }
 
 
-def _label(cls):
-    return cls.replace("___", " — ").replace("_", " ")
-
-
 def diagnose_leaf_image(image_bytes: bytes):
-    """Yaprak fotoğrafını ONNX modeliyle sınıflandırır; model yoksa renk kuralına düşer."""
+    """Marul yaprağı fotoğrafını ONNX modeliyle sınıflandırır; model yoksa renk kuralına düşer."""
     try:
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         try:
@@ -163,27 +164,30 @@ def diagnose_leaf_image(image_bytes: bytes):
         except (ImportError, FileNotFoundError):
             return _color_rule(img)
 
+        w, h = img.size
+        mx, my = round(w * (1 - m["crop"]) / 2), round(h * (1 - m["crop"]) / 2)
+        img = img.crop((mx, my, w - mx, h - my))  # eğitimdeki merkez kırpmayla aynı
         x = np.asarray(img.resize((224, 224)), dtype=np.float32) / 255.0
         x = ((x - [0.485, 0.456, 0.406]) / [0.229, 0.224, 0.225]).astype(np.float32)
         logits = m["sess"].run(None, {"x": x.transpose(2, 0, 1)[None]})[0][0]
         p = np.exp(logits - logits.max())
         p /= p.sum()
         idx = np.argsort(p)[::-1][:3]
-        top3 = [{"class": m["classes"][i], "label": _label(m["classes"][i]), "prob": round(float(p[i]), 4)} for i in idx]
+        top3 = [{"class": m["classes"][i], "label": LETTUCE[m["classes"][i]][0], "prob": round(float(p[i]), 4)} for i in idx]
         conf = float(p[idx[0]])
         confident = conf >= CONF_MIN
         label = top3[0]["label"]
-        healthy = top3[0]["class"].endswith("healthy")
+        healthy = top3[0]["class"] == "healthy"
 
         if not confident:
             diagnosis, severity, color = f"Emin değilim — en olası: {label}", "Uncertain", "#f59e0b"
-            recommendation = "Sonuç güvenilir değil. Görüntü yaprak olmayabilir ya da modelin bilmediği bir bitkidir. Daha net, tek yapraklı ve düz arka planlı bir fotoğraf yükleyin."
+            recommendation = "Sonuç güvenilir değil. Görüntü marul yaprağı olmayabilir ya da belirti modelin tanımadığı türdendir. Daha net, tek yapraklı ve düz arka planlı bir fotoğraf yükleyin."
         elif healthy:
             diagnosis, severity, color = label, "Optimal", "#10b981"
-            recommendation = "Yaprak sağlıklı görünüyor. Mevcut bakım ve iklim rejimini koruyun."
+            recommendation = LETTUCE["healthy"][1]
         else:
             diagnosis, severity, color = label, "High Risk", "#ef4444"
-            recommendation = "Hastalıklı yaprakları ayırın, nemi düşürün, havalandırmayı artırın; kesin tanı ve ilaç için uzmana veya zirai ilaç etiketine başvurun."
+            recommendation = LETTUCE[top3[0]["class"]][1]
 
         arr = np.asarray(img.resize((400, 400)), dtype=np.float32)
         green_ratio = float(np.mean(arr[:, :, 1] / (arr.sum(axis=2) + 1e-6)))
@@ -197,7 +201,8 @@ def diagnose_leaf_image(image_bytes: bytes):
             "top3": top3,
             "confidence": round(conf, 4),
             "confident": confident,
-            "model_accuracy": m["acc"],
+            "macro_f1": m["f1"],
+            "lesion_ratio": lesion_ratio(img),
             "source": "onnx",
         }
     except Exception as e:
