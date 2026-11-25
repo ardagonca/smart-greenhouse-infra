@@ -1,9 +1,9 @@
+import { API } from '../../api';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import ModelComparison from '../monitoring/ModelComparison';
 import './SystemHealth.css';
 
-const API = 'http://localhost:8000';
 const POLL_MS = 60000;
 
 // Her bileşen: { state: 'ok'|'warn'|'bad', detail, since (Date|null), action }
@@ -62,7 +62,7 @@ async function probe(sensorAt) {
   const r = {};
   r.api = root.e
     ? { state: 'bad', detail: 'API yanıt vermiyor.', action: API_DOWN }
-    : { state: 'ok', detail: 'Backend yanıt veriyor (localhost:8000).' };
+    : { state: 'ok', detail: `Backend yanıt veriyor (${API}).` };
 
   const down = (what) => ({ state: 'bad', detail: `${what} alınamadı.`, action: root.e ? API_DOWN : 'Backend günlüklerine bakın; Verdify erişimi geçici olarak kesilmiş olabilir.' });
 

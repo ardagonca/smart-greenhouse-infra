@@ -1,3 +1,4 @@
+import { API } from '../../api';
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, ZoomControl, Polygon, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -28,12 +29,12 @@ export default function WeatherMap({ sensorData }) {
   const [dewTrend, setDewTrend] = useState([]);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/weather/solar-trend?range=${RANGE[pollutionTab]}`)
+    fetch(`${API}/api/weather/solar-trend?range=${RANGE[pollutionTab]}`)
       .then(r => r.json()).then(j => setSolarTrend(j.data || [])).catch(() => setSolarTrend([]));
   }, [pollutionTab]);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/weather/dew-trend')
+    fetch(`${API}/api/weather/dew-trend`)
       .then(r => r.json()).then(j => setDewTrend(j.data || [])).catch(() => setDewTrend([]));
   }, []);
 
@@ -43,7 +44,7 @@ export default function WeatherMap({ sensorData }) {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/weather/latest');
+        const res = await fetch(`${API}/api/weather/latest`);
         const json = await res.json();
         if (json.data) {
           setWeatherData(json.data);

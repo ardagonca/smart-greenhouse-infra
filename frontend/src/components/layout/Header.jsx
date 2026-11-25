@@ -1,6 +1,7 @@
+import { API } from '../../api';
 import React, { useState, useEffect, useRef } from 'react';
 
-const API = 'http://localhost:8000/api/profile';
+const PROFILE_API = `${API}/api/profile`;
 
 export default function Header({ activeTab, onTabChange }) {
   const [profile, setProfile] = useState({ name: 'Arda', email: null, role: 'Admin' });
@@ -10,7 +11,7 @@ export default function Header({ activeTab, onTabChange }) {
   const box = useRef(null);
 
   useEffect(() => {
-    fetch(API).then(r => r.json()).then(j => j.data && setProfile(j.data)).catch(() => {}); // backend kapalıysa varsayılan kalır
+    fetch(PROFILE_API).then(r => r.json()).then(j => j.data && setProfile(j.data)).catch(() => {}); // backend kapalıysa varsayılan kalır
   }, []);
 
   useEffect(() => { // dışarı tıklayınca kapan
@@ -29,7 +30,7 @@ export default function Header({ activeTab, onTabChange }) {
   const save = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(API, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(PROFILE_API, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: form.name.trim(), email: form.email.trim() || null }) });
       if (!res.ok) throw new Error();
       setProfile((await res.json()).data);

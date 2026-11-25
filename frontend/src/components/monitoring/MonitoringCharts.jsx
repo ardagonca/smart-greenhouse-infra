@@ -1,3 +1,4 @@
+import { API } from '../../api';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -88,7 +89,7 @@ export default function MonitoringCharts() {
   useEffect(() => {
     let live = true, timer;
     setStatus('loading');
-    fetch(`http://localhost:8000/api/monitoring/charts?days=${days}`)
+    fetch(`${API}/api/monitoring/charts?days=${days}`)
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(j => {
         if (!live) return;

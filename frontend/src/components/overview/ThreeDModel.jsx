@@ -1,3 +1,4 @@
+import { API } from '../../api';
 import React, { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
@@ -96,7 +97,7 @@ export default function ThreeDModel() {
   // Gerçek veri: Grafana `energy` tablosundaki en son şebeke gücü (W, negatif = şebekeye verilen)
   const [powerW, setPowerW] = useState(null);
   useEffect(() => {
-    const load = () => fetch(`http://localhost:8000/api/energy/day?date=${new Date().toISOString().split('T')[0]}`)
+    const load = () => fetch(`${API}/api/energy/day?date=${new Date().toISOString().split('T')[0]}`)
       .then(r => r.json()).then(j => setPowerW(j.data?.current_power_w ?? null)).catch(() => setPowerW(null));
     load();
     const id = setInterval(load, 60000);

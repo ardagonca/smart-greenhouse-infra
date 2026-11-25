@@ -1,7 +1,9 @@
+import { API } from '../../api';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, animate, useReducedMotion } from 'motion/react';
 import MonitoringCharts from '../monitoring/MonitoringCharts';
 import LiveCameras from '../monitoring/LiveCameras';
+import LeafCheck from '../monitoring/LeafCheck';
 import { Spark, RuntimeBar, VpdBullet } from '../monitoring/MonitoringViz';
 import './Monitoring.css';
 
@@ -66,13 +68,13 @@ export default function Monitoring({ active = true }) {
 
   const fetchKpi = async () => {
     try {
-      const r = await fetch('http://localhost:8000/api/monitoring/kpi');
+      const r = await fetch(`${API}/api/monitoring/kpi`);
       if (r.ok) setKpi((await r.json()).data || []);
     } catch { /* önceki seri kalır */ }
   };
   const fetchScada = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/monitoring/scada');
+      const res = await fetch(`${API}/api/monitoring/scada`);
       if (!res.ok) throw new Error(res.status);
       setScadaData(await res.json());
       setLastOk(new Date());
@@ -192,6 +194,7 @@ export default function Monitoring({ active = true }) {
       </motion.section>
 
       <LiveCameras active={active} />
+      <LeafCheck />
 
       <motion.div className="mn-two" {...enter(1)}>
         <section className="mn-panel" aria-labelledby="mn-act-h">

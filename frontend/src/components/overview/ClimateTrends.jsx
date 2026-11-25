@@ -1,3 +1,4 @@
+import { API } from '../../api';
 import React, { useState, useEffect } from 'react';
 import {
   LineChart,
@@ -16,7 +17,7 @@ export default function ClimateTrends({ selectedDate }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`http://localhost:8000/api/trends/date?date=${selectedDate}`)
+    fetch(`${API}/api/trends/date?date=${selectedDate}`)
       .then(res => res.json())
       .then(json => {
         if (json && json.data) {

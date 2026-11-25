@@ -1,0 +1,16 @@
+.lc { background: var(--card-bg); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 20px 24px; min-width: 0; }
+.lc h3 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 600; color: var(--text-main); }
+.lc-note { margin: 0 0 12px; color: var(--text-soft); font-size: 0.85rem; }
+.lc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.lc-row input[type="file"] { max-width: 100%; color: var(--text-main); }
+.lc-prev { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; }
+.lc-out { margin-top: 14px; color: var(--text-main); overflow-wrap: anywhere; }
+.lc-err { color: var(--bad); background: var(--bad-bg); padding: 8px 12px; border-radius: 8px; }
+.lc-diag { font-size: 1.15rem; font-weight: 700; }
+.lc-unsure { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 6px; background: var(--warn-bg); color: var(--warn); font-size: 0.85rem; font-weight: 700; }
+.lc-top { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 6px; }
+.lc-top li { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 3.5em; align-items: center; gap: 8px; font-size: 0.85rem; }
+.lc-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.lc-bar i { display: block; height: 100%; background: var(--accent-blue); }
+.lc-top b { text-align: right; font-variant-numeric: tabular-nums; }
+.lc-warn { margin: 14px 0 0; color: var(--text-soft); font-size: 0.78rem; }

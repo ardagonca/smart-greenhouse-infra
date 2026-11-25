@@ -1,3 +1,4 @@
+import { API } from '../../api';
 import React, { useEffect, useState } from 'react';
 import './ModelComparison.css';
 
@@ -13,7 +14,7 @@ const NOTE = {
 export default function ModelComparison() {
   const [d, setD] = useState(undefined);
   useEffect(() => {
-    fetch('http://localhost:8000/api/ml/compare').then((r) => r.json()).then((j) => setD(j.data), () => setD(null));
+    fetch(`${API}/api/ml/compare`).then((r) => r.json()).then((j) => setD(j.data), () => setD(null));
   }, []);
   if (d === undefined) return null;
   if (!d) return <p className="mc-note">Model karşılaştırması henüz üretilmedi (docker exec greenhouse_api python eval_models.py).</p>;

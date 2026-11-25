@@ -1,3 +1,4 @@
+import { API } from '../../api';
 import React, { useState, useEffect } from 'react';
 import {
   LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
@@ -67,7 +68,7 @@ export default function Analytics() {
 
   useEffect(() => {
     const ctrl = new AbortController(); // aralık değişince eski istek iptal edilir
-    fetch(`http://localhost:8000/api/analytics/historical?hours=${range.hours}`, { signal: ctrl.signal })
+    fetch(`${API}/api/analytics/historical?hours=${range.hours}`, { signal: ctrl.signal })
       .then(res => { if (!res.ok) throw new Error(res.status); return res.json(); })
       .then(json => {
         const rows = json.data || [];
@@ -128,7 +129,7 @@ export default function Analytics() {
       {loading ? (
         <div className="an-state" role="status"><strong>Geçmiş veriler yükleniyor</strong>Sunucudan ölçümler alınıyor, birkaç saniye sürebilir.</div>
       ) : failed ? (
-        <div className="an-state"><strong>Sunucuya ulaşılamadı</strong>Arka uç (localhost:8000) kapalı olabilir. Sunucuyu başlatıp aralığı yeniden seçin.</div>
+        <div className="an-state"><strong>Sunucuya ulaşılamadı</strong>Arka uç ({API}) kapalı olabilir. Sunucuyu başlatıp aralığı yeniden seçin.</div>
       ) : data.length === 0 ? (
         <div className="an-state"><strong>{range.label} için kayıt yok</strong>Bu aralıkta sensör kaydı bulunmuyor olabilir. Daha geniş bir zaman aralığı seçin ya da sunucunun veri kaydettiğinden emin olun.</div>
       ) : (

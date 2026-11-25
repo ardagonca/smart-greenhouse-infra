@@ -1,3 +1,4 @@
+import { WS, API } from './api';
 import React, { useState, useEffect } from 'react';
 import Header from './components/layout/Header';
 import Overview from './components/pages/Overview';
@@ -19,7 +20,7 @@ function App() {
     let reconnectTimeout = null;
 
     const connect = () => {
-      ws = new WebSocket('ws://localhost:8000/ws');
+      ws = new WebSocket(`${WS}/ws`);
       
       ws.onmessage = (event) => {
         try {
@@ -49,11 +50,11 @@ function App() {
     let stopped = false;
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const fetchLatestData = async () => {
-      const res = await fetch('http://localhost:8000/api/conditions/latest'); // bağlanamazsa fırlatır -> yeniden dene
+      const res = await fetch(`${API}/api/conditions/latest`); // bağlanamazsa fırlatır -> yeniden dene
       const json = await res.json();
       if (json.data) setSensorData(json.data);
       try {
-        const mlJson = await (await fetch('http://localhost:8000/api/ml/predict_today')).json();
+        const mlJson = await (await fetch(`${API}/api/ml/predict_today`)).json();
         if (mlJson.status === "success") {
           setAiRisk({ risk_probability: mlJson.risk_probability, is_high_risk: mlJson.is_high_risk });
         }

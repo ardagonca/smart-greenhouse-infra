@@ -13,3 +13,4 @@ requests
 torch
 Pillow
 python-multipart
+onnxruntime==1.19.2

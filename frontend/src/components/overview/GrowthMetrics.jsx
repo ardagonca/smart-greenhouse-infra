@@ -1,3 +1,4 @@
+import { API } from '../../api';
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Calendar from 'react-calendar';
@@ -46,7 +47,7 @@ export default function GrowthMetrics({ sensorData, selectedDate, setSelectedDat
   const [trends, setTrends] = useState([]);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/trends/date?date=${selectedDate}`)
+    fetch(`${API}/api/trends/date?date=${selectedDate}`)
       .then(res => res.json())
       .then(json => {
         if (json && json.data) {

@@ -1,3 +1,4 @@
+import { API } from '../../api';
 import React, { useState, useEffect } from 'react';
 import CurrentConditions from '../overview/CurrentConditions';
 import Alerts from '../overview/Alerts';
@@ -13,7 +14,7 @@ export default function Overview({ sensorData, aiRisk }) {
 
   useEffect(() => {
     if (!isToday) {
-      fetch(`http://localhost:8000/api/conditions/date?date=${selectedDate}`)
+      fetch(`${API}/api/conditions/date?date=${selectedDate}`)
         .then(res => res.json())
         .then(data => {
           if (data && data.data) {
@@ -27,7 +28,7 @@ export default function Overview({ sensorData, aiRisk }) {
           setHistoricalData(null);
         });
 
-      fetch(`http://localhost:8000/api/ml/predict_date?date=${selectedDate}`)
+      fetch(`${API}/api/ml/predict_date?date=${selectedDate}`)
         .then(res => res.json())
         .then(data => {
           if (data && data.status === "success") {
