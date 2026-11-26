@@ -13,7 +13,8 @@ export default function Alerts({ aiRisk }) {
     else riskLevel = 'low';
   }
 
-  const alertCount = riskLevel === 'high' || riskLevel === 'moderate' ? 1 : 0; // ekranda uyarı kartı çıkıyorsa sayaç da 1
+  const inf = aiRisk?.infection; // mildiyö enfeksiyon koşulu (BREMCAST uyarlaması), son yerel gün
+  const alertCount = (riskLevel === 'high' || riskLevel === 'moderate' ? 1 : 0) + (inf?.favorable ? 1 : 0); // ekrandaki uyarı kartı sayısı
 
     const getAlertUI = () => {
     switch (riskLevel) {
@@ -112,6 +113,17 @@ export default function Alerts({ aiRisk }) {
       </div>
       
       {getAlertUI()}
+
+      {inf && (inf.favorable ? (
+        <div className="alert-item" style={{background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '12px 16px', fontSize: '0.8rem', color: '#991b1b'}}>
+          <b>Mildiyö enfeksiyon koşulu oluştu</b><br />
+          Gün doğumundan sonra {inf.morning_wet_h} saat yüksek nem (≥ %90), sıcaklık enfeksiyona uygun
+        </div>
+      ) : (
+        <div style={{fontSize: '0.75rem', color: '#64748b', padding: '0 4px'}}>
+          Mildiyö enfeksiyon koşulu yok · bugünkü en yüksek nem %{inf.max_rh} (ıslaklık eşiği %90)
+        </div>
+      ))}
 
       <style jsx="true">{`
         @keyframes pulse-red {

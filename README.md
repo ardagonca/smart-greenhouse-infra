@@ -28,6 +28,7 @@ Yaprak fotoğrafı (arayüzden) ────────────────
 2. **Alarm (kural tabanlı):** Tahmin **2 ardışık saat** 0,8 kPa'nın altındaysa alarm açılır; tahmin 0,9 kPa'yı geçince kapanır (histerezis, kısa dalgalanmalarda alarm üretmez).
 3. **Görüntü:** Yüklenen marul yaprağı fotoğrafı 5 sınıfa ayrılır (sağlıklı, mildiyö, diğer mantar, bakteriyel, viral). Güven 0,7'nin altındaysa "Emin değilim" denir. Sonuç veritabanına yazılır (`leaf_diagnosis`).
 4. **Birleştirme:** Alarm açıkken son 24 saatteki güvenilir yaprak sonucunda neme bağlı hastalık olasılığı ≥ 0,5 ise öncelik **yüksek** olur. Alarm kararını görüntü vermez, yalnız önceliği değiştirir.
+5. **Mildiyö enfeksiyon koşulu** (`app/ml/infection.py`): BREMCAST'ten uyarlanan kural. Gün doğumundan sonra en az 3 saat yaprak ıslak kalmışsa, bu sürede ortalama sıcaklık ≤ 20 °C ve sonraki 4 saatte ≤ 22 °C ise koşul oluşmuş sayılır (Kushalappa 2001; Wu ve ark. 2002, *Phytopathology* 92:631). Yaprak ıslaklığı sensörü olmadığı için nemin ≥ %90 olduğu saat ıslak kabul edilir. VPD alarmı riskin yaklaştığını, bu kural ise enfeksiyon için gereken koşulun gerçekleştiğini söyler.
 
 ## Çalıştırma
 
@@ -80,6 +81,7 @@ Aynı fotoğrafın kopyaları (döndürme, kırpma, gürültü) tek grupta tutul
 - **Mevsimsel kayma:** Kasım simülasyonunda (son 7 gün) alarm her gece açıldı; alarmlı saatlerin yalnız %16'sında sonraki 6 saat gerçekten eşiğin altındaydı. Gece ısıtması VPD'yi eşiğin hemen üstünde tuttuğu için yaz-sonbahar verisiyle eğitilen model kışın fazla alarm üretir.
 - **Erken uyarı süresi kısa:** Ölçülen VPD'nin eşiğin altına indiği 155 olayda histerezisli alarmın medyan erkenliği 0 saattir; olayların %37'sinde en az 1 saat önce uyarır. Histerezis yanlış alarmı azaltırken erkenliği de azaltır.
 - **Görüntü verisi az ve karışık kaynaklı:** Bakteriyel (16 grup) ve diğer mantar (27 grup) sınıfları zayıftır (F1 0,49 ve 0,16). Sağlıklı ve hastalıklı fotoğraflar farklı kaynaklardan geldiği için model kısmen çekim tarzını öğrenmiş olabilir. Solgunluk ve besin eksikliği eğitimde yoktur.
+- **Verdify serasında enfeksiyon koşulu hiç oluşmadı:** Nisan–Kasım 2026 arasındaki 223 günde saatlik ortalama nem hiç %90'a ulaşmadı (en yüksek %86,5; günlük en yüksek değerin medyanı %75,2), dolayısıyla mildiyö kuralı hiçbir gün tetiklenmedi. İklimi sıkı kontrol edilen bu serada 0,8 kPa VPD alarmı enfeksiyon koşulundan önce gelen bir ara uyarıdır. Kuralın gerçek tetiklenme davranışı ancak kabin verisiyle (ve tercihen yaprak ıslaklığı sensörüyle) ölçülebilir. Saatlik ortalama, kısa süreli nem tepelerini de düzleştirir.
 - **Gerçek kabin verisi henüz yok:** Tüm sonuçlar başka bir seranın verisi ve açık fotoğraf setleriyle elde edildi; kabin kurulduğunda yeniden ölçülmelidir.
 
 ## Veri kaynakları ve lisanslar
