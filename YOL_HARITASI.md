@@ -12,7 +12,8 @@ Sıra: **1 → 2 → 3 → 6 → 4 → 9 → 10**. Zaman kısıtlıysa en az 1, 
 
 Mevcut ölçülmüş zayıflıklar: kışın alarmların yalnız %16'sı doğru, medyan erken uyarı süresi 0 saat, VPD ile hastalık arasındaki bağ doğrudan kurulmamış.
 
-### 1. Hastalık risk endeksi
+### 1. Hastalık risk endeksi — ✅ yapıldı (`app/ml/infection.py`)
+- Sonuç: Verdify'da 223 günün hiçbirinde koşul oluşmadı (nem hiç %90'a ulaşmadı). Ayrıntı README'nin sınırlılıklar bölümünde.
 - Verdify'ın saatlik iç sıcaklık ve nem verisinden: nemin %90 üstünde kaldığı ardışık saatler ve çiy noktası farkı (hava sıcaklığı − çiy noktası) küçük olan saatler.
 - Bunlardan, literatürdeki mildiyö risk modellerine dayanan bir günlük enfeksiyon riski endeksi hesaplanır.
 - Eşik değerleri kaynaktan doğrulanıp README'de kaynakça ile verilir.
@@ -39,7 +40,7 @@ Mevcut ölçülmüş zayıflıklar: kışın alarmların yalnız %16'sı doğru,
 - Alarm açılış/kapanış ve öncelik değişimleri veritabanına yazılır; kullanıcı panelden "gördüm" diye onaylar.
 - **Bitti sayılır:** geçmiş alarmlar listelenir; erken uyarı ölçütü bu kayıtlardan da hesaplanabilir.
 
-### 6. Bağlantı kopmasına dayanıklılık
+### 6. Bağlantı kopmasına dayanıklılık — ✅ yapıldı (`ingest/bridge.py`, test: `python -m ingest.test_bridge`)
 - Veritabanı erişilemezken bridge ölçümleri yerel dosyada biriktirir, bağlantı gelince sırayla gönderir. Şu an bu aralıktaki veri kayboluyor.
 - **Bitti sayılır:** veritabanı bağlantısı kesilip geri açıldığında arada eksik saat kalmadığı testle gösterilmiş.
 

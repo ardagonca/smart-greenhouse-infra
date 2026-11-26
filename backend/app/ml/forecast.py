@@ -130,7 +130,10 @@ def predict(end_date=None):
     alarm = bool(alarm_series(preds, times)[-1])
     prob = 0.5 * (1 + erf((THR - pred) / (b["sigma"] * sqrt(2))))
     as_of = times[-1]
-    return {"risk_probability": prob, "is_high_risk": alarm, "alarm_active": alarm, "predicted_vpd_6h": pred, "vpd_threshold": THR,
+    from app.ml.infection import daily
+    days = daily(df)
+    return {"infection": days[-1] if days else None,  # mildiyö enfeksiyon koşulu (BREMCAST uyarlaması), son yerel gün
+"risk_probability": prob, "is_high_risk": alarm, "alarm_active": alarm, "predicted_vpd_6h": pred, "vpd_threshold": THR,
             "as_of": as_of.isoformat(), "data_age_hours": round((datetime.now(timezone.utc) - as_of).total_seconds() / 3600, 1)}
 
 
