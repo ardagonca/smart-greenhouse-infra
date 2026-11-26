@@ -52,7 +52,7 @@ const API_DOWN = 'Backend kapalı olabilir. Docker\'ın çalıştığını kontr
 
 async function probe(sensorAt) {
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 6000);
+  const timer = setTimeout(() => ctl.abort(), 15000); // soğuk önbellekte arşiv indirme birkaç saniye sürebilir; erken kesip yanlış "ulaşılamıyor" demesin
   const run = (path) => getJson(path, ctl.signal).then((v) => ({ v }), (e) => ({ e }));
   const [root, cond, scada, ml] = await Promise.all([
     run('/'), run('/api/conditions/latest'), run('/api/monitoring/scada'), run('/api/ml/predict_today'),
