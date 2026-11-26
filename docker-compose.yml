@@ -67,10 +67,6 @@ services:
       - greenhouse_network
     restart: always
 
-  # 5. React Frontend Paneli - LOKALDE ÇALIŞTIRILIYOR (npm run dev)
-  # frontend:
-  #   ... (Devre dışı)
-
 networks:
   greenhouse_network:
     driver: bridge

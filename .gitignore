@@ -67,3 +67,7 @@ desktop.ini
 
 # Tez/rapor çıktıları (repoya girmesin)
 Claude outputs/
+
+# Simülasyon çıktıları (simulate.py üretir)
+backend/sim.json
+backend/sim.png
