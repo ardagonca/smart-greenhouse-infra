@@ -131,6 +131,37 @@ def alarm_eval(y, p, times, hysteresis):
     return dict(episodes=len(true_eps), episode_recall=det / max(len(true_eps), 1), false_alarms_per_week=false_eps / weeks, alarm_blocks=len(al_eps))
 
 
+LOOKBACK = 12  # olay başlangıcından en çok bu kadar saat önce açılan alarm o olaya sayılır
+
+
+def lead_times(cur, al, times):
+    """Ölçülen VPD'nin THR altına indiği her gerçek olay için alarm, başlangıçtan kaç saat ÖNCE açıldı (eksi: sonra).
+    Alarm olay süresince açık olmalı; erkenlik, o alarm bloğunun kesintisiz başlangıcına kadar sayılır
+    (saat boşluğunu, önceki olayın bitişini ve LOOKBACK'i geçmeden). Olay içinde hiç alarm yoksa kaçırılmıştır."""
+    out, missed, prev_end = [], 0, -1
+    hour = pd.Timedelta(hours=1)
+    for s, e in runs(cur < THR, times):
+        on = [i for i in range(s, e + 1) if al[i]]
+        if not on:
+            missed += 1
+        else:
+            a = on[0]
+            while a - 1 > prev_end and s - (a - 1) <= LOOKBACK and al[a - 1] and times[a] - times[a - 1] == hour:
+                a -= 1
+            if a - 1 == prev_end and al[a - 1] and times[a] - times[a - 1] == hour:
+                a = max(a, s)  # önceki olaydan kesintisiz süren alarm: uyarı var ama bu olay için erken sayılmaz
+            out.append(s - a)
+        prev_end = e
+    return np.array(out), missed
+
+
+def lead_summary(cur, al, times):
+    L, missed = lead_times(cur, al, times)
+    n = len(L) + missed
+    return dict(events=n, caught=round(len(L) / max(n, 1), 3), median_lead_h=float(np.median(L)) if len(L) else None,
+                iqr_h=[float(v) for v in np.percentile(L, [25, 75])] if len(L) else None, early_ge1h=round(float((L >= 1).sum() / max(n, 1)), 3))
+
+
 def ece(prob_true, prob_pred, bins=10):
     edges = np.linspace(0, 1, bins + 1)
     e, n = 0.0, len(prob_pred)
@@ -185,10 +216,6 @@ def main():
     print("CNN-LSTM - GBM (eşli bootstrap):", diff)
     out = {"rows": rows, "cnn_minus_gbm": diff, "samples": int(len(te_all)), "risk_rate": round(float((yt < THR).mean()), 3),
            "from": f"{tt[0]:%Y-%m-%d}", "to": f"{tt[-1]:%Y-%m-%d}", "blocks": FOLDS, "threshold": THR, "horizon_h": HOR}
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "ml", "eval_results.json")
-    with open(path + ".tmp", "w", encoding="utf-8") as fh:
-        json.dump(out, fh, ensure_ascii=False, indent=1)
-    os.replace(path + ".tmp", path)  # API yarım dosya okumasın
 
     print("\n== Blok bazında (GBM) MAE / PR-AUC ==")
     for k in range(FOLDS):
@@ -204,6 +231,18 @@ def main():
     for h, label in ((False, "ham kural"), (True, f"{K_ON} ardışık saat + histerezis")):
         r = alarm_eval(yt, P["GBM"][te_all], tt, h)
         print(f"  {label:32s} olay={r['episodes']} yakalama={r['episode_recall']:.2f} yanlış alarm/hafta={r['false_alarms_per_week']:.2f} alarm bloğu={r['alarm_blocks']}")
+
+    print(f"\n== Erken uyarı süresi: ölçülen VPD < {THR} olaylarına göre (en çok {LOOKBACK} sa geriye) ==")
+    cur = X[te_all, -1, 2]  # t anında ölçülen VPD
+    out["lead_time"] = {}
+    for nme, al in (("GBM + histerezis", alarm_series(P["GBM"][te_all], tt)), ("GBM ham kural", P["GBM"][te_all] < THR),
+                    ("persistence (anlık eşik)", cur < THR)):
+        out["lead_time"][nme] = r = lead_summary(cur, al, tt)
+        print(f"  {nme:26s} {r}")
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "ml", "eval_results.json")
+    with open(path + ".tmp", "w", encoding="utf-8") as fh:
+        json.dump(out, fh, ensure_ascii=False, indent=1)
+    os.replace(path + ".tmp", path)  # API yarım dosya okumasın
 
     # Şişme gösterimi: aynı model, rastgele bölme
     rng = np.random.default_rng(0).permutation(n)
