@@ -55,6 +55,18 @@ async def init_db():
                 role VARCHAR(30) NOT NULL DEFAULT 'Admin'
             );
         ''')
+        # Yaprak fotoğrafı sonuçları (form: dosya adı, çekim zamanı ve model sonucu tutulur); karar katmanı son güvenilir sonucu okur
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS leaf_diagnosis (
+                id BIGSERIAL PRIMARY KEY,
+                time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                filename VARCHAR(255),
+                top_class VARCHAR(40) NOT NULL,
+                confidence REAL NOT NULL,
+                confident BOOLEAN NOT NULL,
+                moist_prob REAL NOT NULL
+            );
+        ''')
         await conn.execute("INSERT INTO user_profile (id, name) VALUES (1, 'Arda') ON CONFLICT (id) DO NOTHING")
         print("Table sensor_metrics initialized.")
 
@@ -180,7 +192,7 @@ async def get_daily_average(date_str: str):
             MAX(ai_risk_score) as ai_risk_score,
             BOOL_OR(is_high_risk) as is_high_risk
         FROM sensor_metrics
-        WHERE DATE(time AT TIME ZONE 'UTC') = $1::DATE;
+        WHERE DATE(time AT TIME ZONE 'America/Denver') = $1::DATE;  -- gün, seranın yerel saatine göre
     '''
     
     try:
@@ -209,12 +221,12 @@ async def get_daily_trends(date_str: str):
 
     query = '''
         SELECT 
-            time AT TIME ZONE 'UTC' as time,
+            time AT TIME ZONE 'America/Denver' as time,
             temperature,
             humidity,
             vpd
         FROM sensor_metrics
-        WHERE DATE(time AT TIME ZONE 'UTC') = $1::DATE
+        WHERE DATE(time AT TIME ZONE 'America/Denver') = $1::DATE
         ORDER BY time ASC;
     '''
     
@@ -230,6 +242,27 @@ async def get_daily_trends(date_str: str):
         }
         for r in records
     ]
+
+
+async def insert_leaf(filename, r):
+    if pool is None:
+        return
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("INSERT INTO leaf_diagnosis (filename, top_class, confidence, confident, moist_prob) VALUES ($1, $2, $3, $4, $5)",
+                               (filename or "")[:255], r["top3"][0]["class"], r["confidence"], r["confident"], r["moist_prob"])
+    except Exception as e:
+        print(f"Leaf insert error: {e}")
+
+
+async def get_latest_leaf():
+    """Son güvenilir ("emin değilim" olmayan) yaprak sonucu; yoksa boş kayıt. Önceliği yalnız bu yükseltebilir."""
+    if pool is not None:
+        async with pool.acquire() as conn:
+            r = await conn.fetchrow("SELECT time, moist_prob FROM leaf_diagnosis WHERE confident ORDER BY time DESC LIMIT 1")
+        if r:
+            return {"time": r["time"], "moist_prob": r["moist_prob"]}
+    return {"time": None, "moist_prob": None}
 
 
 async def get_profile():

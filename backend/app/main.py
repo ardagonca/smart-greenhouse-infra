@@ -8,20 +8,9 @@ import os
 import subprocess
 import sys
 import time
-from collections import deque
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
-try:
-    import torch
-    # Add app folder to path to import ml modules easily
-    sys.path.append(os.path.dirname(__file__))
-    from ml.preprocessing import TimeSeriesPreprocessor
-    from ml.model import HybridGreenhouseAI
-    HAS_ML = True
-except ImportError:
-    HAS_ML = False
-    print("PyTorch or ML modules not installed. Running without ML features.")
-from app.db import init_db, close_db, insert_metrics, get_historical_data, get_latest_outdoor_weather, get_profile, update_profile
+from app.db import init_db, close_db, insert_metrics, get_historical_data, get_profile, update_profile
 from app import db
 from app.vision import get_verdify_vision_data, diagnose_leaf_image
 from app.scada import get_scada_telemetry
@@ -40,96 +29,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Globals
 connected_clients = set()
-sensor_buffer = deque(maxlen=24)
-
-# Load AI Model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "ml", "greenhouse_ai_model.pth")
-SCALER_PATH = os.path.join(os.path.dirname(__file__), "ml", "scaler.pkl")
-
-preprocessor = None
-model = None
-
-if HAS_ML:
-    # Initialize Preprocessor (it will load the scaler inside)
-    preprocessor = TimeSeriesPreprocessor(window_size=24, forecast_horizon=6)
-
-    # Initialize Model Structure
-    try:
-        model = HybridGreenhouseAI(num_features=7, hidden_size=64, num_layers=2, dropout=0.3)
-        if os.path.exists(MODEL_PATH):
-            model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
-            model.eval()
-            print("AI Model loaded successfully.")
-        else:
-            print(f"Warning: Model file not found at {MODEL_PATH}")
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        model = None
-
-    # Preload scaler manually to fail fast if missing
-    if not preprocessor.load_scaler(SCALER_PATH):
-        print(f"Warning: Scaler not found at {SCALER_PATH}")
-
-
-def _fresh(t, hours=3):
-    if t is None:
-        return False
-    if t.tzinfo:
-        t = t.astimezone(timezone.utc).replace(tzinfo=None)
-    return datetime.utcnow() - t < timedelta(hours=hours)
 
 @app.post("/api/telemetry")
 async def api_telemetry(payload: dict):
-    # Map keys for AI Preprocessor to match feature_names
-    ml_payload = dict(payload)
-    ml_payload['indoor_temp'] = payload.get('temperature', 0)
-    ml_payload['indoor_hum'] = payload.get('humidity', 0)
-    ml_payload['indoor_vpd'] = payload.get('vpd', 0)
-    
-    # Fetch latest outdoor weather for AI features
-    outdoor_data = await get_latest_outdoor_weather()
-    if outdoor_data and _fresh(outdoor_data.get('time')):  # bayat dış hava ile yapay zekâ skoru üretme
-        ml_payload['outdoor_temp'] = outdoor_data['temperature_c']
-        ml_payload['outdoor_hum'] = outdoor_data['humidity']
-        ml_payload['solar'] = outdoor_data['solar_irradiance_w_m2']
-        ml_payload['wind_speed'] = outdoor_data['wind_speed_kmh']
-        sensor_buffer.append(ml_payload)  # no real outdoor data -> no ML sample
-
+    """Köprünün ilettiği sensör ölçümü: veritabanına yazılır ve arayüze canlı yayınlanır."""
     if db.pool is None:  # kaydedilemeyecek mesaja "success" deme; köprü yeniden denesin
         return JSONResponse(status_code=503, content={"detail": "Veritabanı bağlı değil"})
 
     # Broadcast raw sensor data to UI
     await broadcast_message({"type": "sensor_update", "data": payload})
     
-    # Default risk values
-    ai_risk_score = None
-    is_high_risk = None
-    
-    # Run AI Inference if buffer is full
-    if len(sensor_buffer) == 24 and model is not None and preprocessor.is_fitted:
-        try:
-            tensor_input = preprocessor.transform_inference(list(sensor_buffer))
-            if tensor_input is not None:
-                with torch.no_grad():
-                    inputs = torch.tensor(tensor_input, dtype=torch.float32)
-                    outputs = model(inputs)
-                    ai_risk_score = torch.sigmoid(outputs).item()
-                    is_high_risk = ai_risk_score > 0.5
-                    
-                    # Broadcast AI Prediction
-                    await broadcast_message({
-                        "type": "ai_prediction",
-                        "risk_probability": ai_risk_score,
-                        "is_high_risk": is_high_risk
-                    })
-        except Exception as e:
-            print(f"AI Inference Error: {e}")
-            
-    # Save to TimescaleDB
     try:
-        await insert_metrics(payload, ai_risk_score, is_high_risk)
+        await insert_metrics(payload)
     except Exception as e:
         print(f"Database Insert Error: {e}")
         
@@ -160,7 +72,13 @@ async def _forecast(end_date=None):
 
 @app.get("/api/ml/predict_today")
 async def api_ml_predict_today():
-    return await _forecast()
+    from app import vision
+    r = await _forecast()
+    if r["status"] == "success":
+        leaf = await db.get_latest_leaf()
+        r["priority"] = vision.alarm_priority(r["alarm_active"], leaf, datetime.now(timezone.utc))
+        r["leaf_moist_prob"] = leaf["moist_prob"]
+    return r
 
 @app.get("/api/ml/predict_date")
 async def api_ml_predict_date(date: str):
@@ -342,11 +260,14 @@ def api_vision_crop_health():  # düz def: bloklayan requests thread havuzunda �
     return get_verdify_vision_data()
 
 @app.post("/api/vision/inspect-leaf")
-def api_vision_inspect_leaf(file: UploadFile = File(...)):
-    contents = file.file.read(MAX_UPLOAD + 1)
+async def api_vision_inspect_leaf(file: UploadFile = File(...)):
+    contents = await file.read(MAX_UPLOAD + 1)
     if len(contents) > MAX_UPLOAD:
         return JSONResponse(status_code=413, content={"detail": "Dosya 5 MB'dan büyük"})
-    return diagnose_leaf_image(contents)
+    r = await asyncio.to_thread(diagnose_leaf_image, contents)  # model çalışırken event loop kilitlenmesin
+    if r.get("source") == "onnx":
+        await db.insert_leaf(file.filename, r)  # form: dosya adı, zaman ve model sonucu veritabanında tutulur
+    return r
 
 # --- INDUSTRIAL SCADA & EQUIPMENT TELEMETRY ENDPOINT ---
 @app.get("/api/monitoring/scada")

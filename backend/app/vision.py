@@ -6,6 +6,7 @@ import io
 import re
 import os
 import json
+from datetime import datetime, timedelta, timezone
 
 from app.ml.lesion import lesion_ratio
 
@@ -104,6 +105,19 @@ LETTUCE = {
     "bacterial": ("Bakteriyel yaprak lekesi", "Hastalıklı yaprakları ayırın, üstten sulamadan ve ıslak bitkiye dokunmaktan kaçının. Uzman doğrulaması gerekir."),
     "viral": ("Viral hastalık (marul mozaiği)", "Bitkiyi ayırın, yaprak biti ve diğer taşıyıcıları kontrol edin. Uzman doğrulaması gerekir."),
 }
+MOIST = ("downy_mildew", "other_fungal", "bacterial")  # neme bağlı hastalık sınıfları
+LEAF_TTL_H, LEAF_MOIST_MIN = 24, 0.5
+
+
+def alarm_priority(alarm, leaf, now):
+    """Karar düzeyinde birleştirme (form, 11. bölüm): iklim alarmı açıkken son 24 saatteki güvenilir yaprak sonucu
+    neme bağlı hastalığı >= 0,5 olasılıkla gösteriyorsa öncelik yükselir. Alarm kararı her zaman iklim kuralındadır."""
+    if not alarm:
+        return "none"
+    fresh = leaf["time"] is not None and (now - leaf["time"]).total_seconds() <= LEAF_TTL_H * 3600
+    return "high" if fresh and leaf["moist_prob"] >= LEAF_MOIST_MIN else "normal"
+
+
 _ML_DIR = os.path.join(os.path.dirname(__file__), "ml")
 _model = {"sess": None, "classes": None, "f1": None}
 
@@ -176,6 +190,7 @@ def diagnose_leaf_image(image_bytes: bytes):
         top3 = [{"class": m["classes"][i], "label": LETTUCE[m["classes"][i]][0], "prob": round(float(p[i]), 4)} for i in idx]
         conf = float(p[idx[0]])
         confident = conf >= CONF_MIN
+        moist = float(sum(p[m["classes"].index(c)] for c in MOIST))
         label = top3[0]["label"]
         healthy = top3[0]["class"] == "healthy"
 
@@ -204,9 +219,21 @@ def diagnose_leaf_image(image_bytes: bytes):
             "macro_f1": m["f1"],
             "lesion_ratio": lesion_ratio(img),
             "source": "onnx",
+            "moist_prob": round(moist, 4),
         }
     except Exception as e:
         return {
             "status": "error",
             "message": str(e)
         }
+
+
+if __name__ == "__main__":
+    t = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    leaf = {"time": t, "moist_prob": 0.8}
+    assert alarm_priority(False, leaf, t) == "none"
+    assert alarm_priority(True, leaf, t + timedelta(hours=23)) == "high"
+    assert alarm_priority(True, leaf, t + timedelta(hours=25)) == "normal"  # bayat yaprak sonucu
+    assert alarm_priority(True, {"time": t, "moist_prob": 0.3}, t) == "normal"
+    assert alarm_priority(True, {"time": None, "moist_prob": None}, t) == "normal"
+    print("OK")

@@ -21,7 +21,7 @@ services:
       - ./backend:/app
     networks:
       - greenhouse_network
-    restart: unless-stopped
+    restart: always
     logging:
       driver: "json-file"
       options:
@@ -37,7 +37,7 @@ services:
       - mosquitto_data:/mosquitto/data
     networks:
       - greenhouse_network
-    restart: unless-stopped
+    restart: always
 
   # 3. Yayıncı: Verdify saatlik arşivi -> MQTT (gerçek sera sensörü yerine geçer)
   publisher:
@@ -51,7 +51,7 @@ services:
       - mosquitto
     networks:
       - greenhouse_network
-    restart: unless-stopped
+    restart: always
 
   # 3b. Köprü: MQTT -> FastAPI /api/telemetry (kayıt ve canlı yayın API'de)
   bridge:
@@ -65,7 +65,7 @@ services:
       - fastapi
     networks:
       - greenhouse_network
-    restart: unless-stopped
+    restart: always
 
   # 5. React Frontend Paneli - LOKALDE ÇALIŞTIRILIYOR (npm run dev)
   # frontend:

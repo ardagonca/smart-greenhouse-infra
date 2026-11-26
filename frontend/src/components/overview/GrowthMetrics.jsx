@@ -1,4 +1,4 @@
-import { API } from '../../api';
+import { API, denverToday } from '../../api';
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Calendar from 'react-calendar';
@@ -42,7 +42,7 @@ export default function GrowthMetrics({ sensorData, selectedDate, setSelectedDat
     };
   }, [calendarRef]);
 
-  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === denverToday();
   
   const [trends, setTrends] = useState([]);
 

@@ -36,7 +36,7 @@ def load(until=None):
     url = (os.getenv("SUPABASE_DB_URL") or os.getenv("DB_URL", "")).replace("postgres://", "postgresql://", 1)
     where = ""
     if until:
-        e = datetime.strptime(until, "%Y-%m-%d").replace(tzinfo=timezone.utc) + pd.Timedelta(days=1)
+        e = (pd.Timestamp(until, tz="America/Denver") + pd.Timedelta(days=1)).tz_convert("UTC")  # seranın yerel gün sonu
         where = f"AND time >= '{(e - pd.Timedelta(hours=72)).isoformat()}' AND time < '{e.isoformat()}'"
     df = pd.read_sql("SELECT date_trunc('hour', time) AS t, AVG(temperature) AS temp_f, AVG(humidity) AS hum, AVG(vpd) AS vpd "
                      f"FROM sensor_metrics WHERE sensor_id='GH_VERDIFY' AND temperature IS NOT NULL AND vpd IS NOT NULL {where} GROUP BY 1 ORDER BY 1",
@@ -116,7 +116,7 @@ def _get():
 
 
 def predict(end_date=None):
-    """end_date (YYYY-MM-DD, UTC gün sonu) verilmezse Verdify arşivindeki en son 24 saat kullanılır."""
+    """end_date (YYYY-MM-DD, Denver gün sonu) verilmezse Verdify arşivindeki en son 24 saat kullanılır."""
     df = load(end_date) if end_date else load_live()
     b = _get()
     # Son 24 saatlik tahmin serisi: alarm durumu geçmişe (histerezis) bağlıdır

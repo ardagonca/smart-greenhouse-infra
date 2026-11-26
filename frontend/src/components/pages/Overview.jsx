@@ -1,4 +1,4 @@
-import { API } from '../../api';
+import { API, denverToday } from '../../api';
 import React, { useState, useEffect } from 'react';
 import CurrentConditions from '../overview/CurrentConditions';
 import Alerts from '../overview/Alerts';
@@ -7,10 +7,10 @@ import GrowthMetrics from '../overview/GrowthMetrics';
 import ClimateTrends from '../overview/ClimateTrends';
 
 export default function Overview({ sensorData, aiRisk }) {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(denverToday);
   const [historicalData, setHistoricalData] = useState(null);
 
-  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === denverToday();
 
   useEffect(() => {
     if (!isToday) {

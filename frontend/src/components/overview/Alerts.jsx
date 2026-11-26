@@ -89,6 +89,11 @@ export default function Alerts({ aiRisk }) {
               <span style={{fontSize: '0.8rem', color: '#dc2626', marginTop: '2px'}}>
                 Probability: {(prob * 100).toFixed(1)}% (Action Required)
               </span>
+              {aiRisk?.priority === 'high' && (
+                <span style={{fontSize: '0.8rem', fontWeight: '700', color: '#991b1b', marginTop: '4px'}}>
+                  Yüksek öncelik: son yaprak fotoğrafında neme bağlı hastalık belirtisi var
+                </span>
+              )}
             </div>
           </div>
         );

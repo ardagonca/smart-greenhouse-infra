@@ -1,8 +1,9 @@
+import { denverToday } from '../../api';
 import React from 'react';
 import { CountUp } from '../../motionKit';
 
 export default function CurrentConditions({ sensorData, selectedDate }) {
-  const isToday = !selectedDate || selectedDate === new Date().toISOString().split('T')[0];
+  const isToday = !selectedDate || selectedDate === denverToday();
 
   const tempC = (sensorData && sensorData.temperature !== null) ? ((sensorData.temperature - 32) * 5/9).toFixed(1) : '--';
   const vpd = (sensorData && sensorData.vpd !== null) ? sensorData.vpd.toFixed(2) : '--';

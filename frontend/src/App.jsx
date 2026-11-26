@@ -29,8 +29,6 @@ function App() {
             // MQTT hattı arşiv saatlerini yeniden yayınlar (geçmiş kayıt); yalnız mevcut değerden daha yeni olanı göster
             const t = new Date(payload.data.timestamp);
             setSensorData((prev) => (prev && !(t > new Date(prev.time || prev.timestamp)) ? prev : { ...payload.data, time: payload.data.timestamp }));
-          } else if (payload.type === 'ai_prediction') {
-            setAiRisk(payload);
           }
         } catch(e) {
           console.error(e);
@@ -58,7 +56,7 @@ function App() {
       try {
         const mlJson = await (await fetch(`${API}/api/ml/predict_today`)).json();
         if (mlJson.status === "success") {
-          setAiRisk({ risk_probability: mlJson.risk_probability, is_high_risk: mlJson.is_high_risk });
+          setAiRisk({ risk_probability: mlJson.risk_probability, is_high_risk: mlJson.is_high_risk, priority: mlJson.priority });
         }
       } catch (e) { /* risk paneli boş kalır, ana veri yine de gösterilir */ }
     };

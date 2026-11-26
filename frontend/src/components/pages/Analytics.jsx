@@ -68,7 +68,7 @@ export default function Analytics() {
 
   useEffect(() => {
     const ctrl = new AbortController(); // aralık değişince eski istek iptal edilir
-    fetch(`${API}/api/analytics/historical?hours=${range.hours}`, { signal: ctrl.signal })
+    const load = () => fetch(`${API}/api/analytics/historical?hours=${range.hours}`, { signal: ctrl.signal })
       .then(res => { if (!res.ok) throw new Error(res.status); return res.json(); })
       .then(json => {
         const rows = json.data || [];
@@ -88,7 +88,9 @@ export default function Analytics() {
         setFailed(true);
         setLoading(false);
       });
-    return () => ctrl.abort();
+    load();
+    const id = setInterval(load, 600000); // yeni saatler arşive ~saatte bir düşer; sayfa açık kaldıkça tazelenir
+    return () => { clearInterval(id); ctrl.abort(); };
   }, [range]);
 
   useEffect(() => {
