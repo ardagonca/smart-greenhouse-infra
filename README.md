@@ -19,7 +19,7 @@ Yaprak fotoğrafı (arayüzden) ────────────────
 |---|---|
 | `greenhouse_mosquitto` | MQTT aracı (yalnız Docker ağı içinde) |
 | `greenhouse_publisher` | Verdify arşivini 10 dakikada bir MQTT'ye yayınlar (gerçek sensör yerine geçer) |
-| `greenhouse_bridge` | MQTT mesajlarını `POST /api/telemetry` ile API'ye iletir; veritabanı yoksa API 503 döner, köprü yeniden dener |
+| `greenhouse_bridge` | MQTT mesajlarını `POST /api/telemetry` ile API'ye iletir; API veya veritabanı yoksa ölçümü diske (`bridge_spool` birimi) yazar, bağlantı gelince sırayla gönderir |
 | `greenhouse_api` | FastAPI: veri, tahmin, alarm, görüntü teşhisi, birleştirme; tahmin modeli 7 günde bir kendini yeniden eğitir |
 
 ## Karar mantığı

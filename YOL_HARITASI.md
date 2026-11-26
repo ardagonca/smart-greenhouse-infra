@@ -40,7 +40,7 @@ Mevcut ölçülmüş zayıflıklar: kışın alarmların yalnız %16'sı doğru,
 - Alarm açılış/kapanış ve öncelik değişimleri veritabanına yazılır; kullanıcı panelden "gördüm" diye onaylar.
 - **Bitti sayılır:** geçmiş alarmlar listelenir; erken uyarı ölçütü bu kayıtlardan da hesaplanabilir.
 
-### 6. Bağlantı kopmasına dayanıklılık
+### 6. Bağlantı kopmasına dayanıklılık — ✅ yapıldı (`ingest/bridge.py`, test: `python -m ingest.test_bridge`)
 - Veritabanı erişilemezken bridge ölçümleri yerel dosyada biriktirir, bağlantı gelince sırayla gönderir. Şu an bu aralıktaki veri kayboluyor.
 - **Bitti sayılır:** veritabanı bağlantısı kesilip geri açıldığında arada eksik saat kalmadığı testle gösterilmiş.
 

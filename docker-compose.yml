@@ -60,6 +60,8 @@ services:
       dockerfile: Dockerfile.ingest
     container_name: greenhouse_bridge
     command: python -u -m ingest.bridge
+    volumes:
+      - bridge_spool:/spool  # API/veritabanı yokken iletilemeyen ölçümler
     depends_on:
       - mosquitto
       - fastapi
@@ -73,3 +75,4 @@ networks:
 
 volumes:
   mosquitto_data:
+  bridge_spool:
